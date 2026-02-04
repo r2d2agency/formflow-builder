@@ -1,0 +1,145 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiService from '@/services/api';
+import { API_CONFIG } from '@/config/api';
+import type { Form, PaginatedResponse } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+export const useForms = (page = 1, limit = 10) => {
+  return useQuery({
+    queryKey: ['forms', page, limit],
+    queryFn: async () => {
+      const response = await apiService.get<PaginatedResponse<Form>>(
+        `${API_CONFIG.ENDPOINTS.FORMS}?page=${page}&limit=${limit}`
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+  });
+};
+
+export const useForm = (id: string) => {
+  return useQuery({
+    queryKey: ['form', id],
+    queryFn: async () => {
+      const response = await apiService.get<Form>(
+        API_CONFIG.ENDPOINTS.FORM_BY_ID(id)
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useFormBySlug = (slug: string) => {
+  return useQuery({
+    queryKey: ['form-slug', slug],
+    queryFn: async () => {
+      const response = await apiService.get<Form>(
+        API_CONFIG.ENDPOINTS.FORM_BY_SLUG(slug)
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    enabled: !!slug,
+  });
+};
+
+export const useCreateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: Partial<Form>) => {
+      const response = await apiService.post<Form>(
+        API_CONFIG.ENDPOINTS.FORMS,
+        data
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      toast({
+        title: 'Formulário criado',
+        description: 'O formulário foi criado com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Form> }) => {
+      const response = await apiService.put<Form>(
+        API_CONFIG.ENDPOINTS.FORM_BY_ID(id),
+        data
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['form', variables.id] });
+      toast({
+        title: 'Formulário atualizado',
+        description: 'As alterações foram salvas com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiService.delete(
+        API_CONFIG.ENDPOINTS.FORM_BY_ID(id)
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      toast({
+        title: 'Formulário excluído',
+        description: 'O formulário foi excluído com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
