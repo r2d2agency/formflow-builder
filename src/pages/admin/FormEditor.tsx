@@ -29,10 +29,13 @@ import {
   Layers,
   Webhook,
   BarChart3,
+  MessageCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import type { Form, FormField, FormSettings } from '@/types';
+import LogoUploader from '@/components/forms/LogoUploader';
+import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
 
 const fieldTypes = [
   { value: 'text', label: 'Texto' },
@@ -393,10 +396,17 @@ const FormEditor: React.FC = () => {
               <CardHeader>
                 <CardTitle>Aparência</CardTitle>
                 <CardDescription>
-                  Personalize as cores do formulário
+                  Personalize a logo e as cores do formulário
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Logo Upload */}
+                <LogoUploader
+                  value={localForm.settings?.logo_url}
+                  onChange={(url) => handleSettingsChange('logo_url', url)}
+                />
+
+                {/* Colors */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="primary_color">Cor Primária (Botão)</Label>
@@ -478,6 +488,13 @@ const FormEditor: React.FC = () => {
                   className="rounded-lg border p-4"
                   style={{ backgroundColor: localForm.settings?.background_color || '#f8fafc' }}
                 >
+                  {localForm.settings?.logo_url && (
+                    <img 
+                      src={localForm.settings.logo_url} 
+                      alt="Logo" 
+                      className="h-10 w-auto mb-4 object-contain"
+                    />
+                  )}
                   <p className="mb-2 text-sm font-medium" style={{ color: localForm.settings?.text_color || '#1e293b' }}>
                     Preview do Formulário
                   </p>
@@ -502,9 +519,12 @@ const FormEditor: React.FC = () => {
           <TabsContent value="integrations" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>WhatsApp (Evolution API)</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  WhatsApp (Evolution API)
+                </CardTitle>
                 <CardDescription>
-                  Envie notificações via WhatsApp quando houver novos leads
+                  Envie notificações e materiais via WhatsApp quando houver novos leads
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -512,7 +532,7 @@ const FormEditor: React.FC = () => {
                   <div>
                     <p className="font-medium">Notificações WhatsApp</p>
                     <p className="text-sm text-muted-foreground">
-                      Receba alertas de novos cadastros
+                      Enviar mensagem automática para novos cadastros
                     </p>
                   </div>
                   <Switch
@@ -521,24 +541,33 @@ const FormEditor: React.FC = () => {
                   />
                 </div>
                 {localForm.settings?.whatsapp_notification && (
-                  <div className="space-y-2">
-                    <Label>Instância Evolution</Label>
-                    <Select
-                      value={localForm.settings?.evolution_instance_id || ''}
-                      onValueChange={(v) => handleSettingsChange('evolution_instance_id', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma instância" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(evolutionInstances || []).map((instance) => (
-                          <SelectItem key={instance.id} value={instance.id}>
-                            {instance.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label>Instância Evolution</Label>
+                      <Select
+                        value={localForm.settings?.evolution_instance_id || ''}
+                        onValueChange={(v) => handleSettingsChange('evolution_instance_id', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma instância" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(evolutionInstances || []).map((instance) => (
+                            <SelectItem key={instance.id} value={instance.id}>
+                              {instance.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <WhatsAppMessageEditor
+                        value={localForm.settings?.whatsapp_message}
+                        onChange={(msg) => handleSettingsChange('whatsapp_message', msg)}
+                      />
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

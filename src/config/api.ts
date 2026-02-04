@@ -43,6 +43,9 @@ export const API_CONFIG = {
     SETTINGS: '/settings',
     SETTINGS_UPLOAD_LOGO: '/settings/upload-logo',
     
+    // Uploads
+    UPLOAD: (type: string) => `/uploads/${type}`,
+    
     // Public form submission
     SUBMIT_FORM: (slug: string) => `/public/forms/${slug}/submit`,
   },
