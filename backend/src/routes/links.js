@@ -281,19 +281,21 @@ router.get('/:code', async (req, res) => {
       return res.status(410).json({ success: false, error: 'Link expirado' });
     }
 
-    // Track click
+    // Redirect FIRST (instant response)
+    res.redirect(301, link.original_url);
+
+    // Track click async (fire and forget - doesn't block redirect)
     const userAgent = req.headers['user-agent'] || '';
     const referer = req.headers['referer'] || null;
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const { device_type, browser, os } = parseUserAgent(userAgent);
 
-    await pool.query(`
+    pool.query(`
       INSERT INTO link_clicks (link_id, ip_address, user_agent, referer, device_type, browser, os)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [link.id, ip, userAgent, referer, device_type, browser, os]);
-
-    // Redirect
-    res.redirect(301, link.original_url);
+    `, [link.id, ip, userAgent, referer, device_type, browser, os]).catch(err => {
+      console.error('Click tracking error:', err);
+    });
   } catch (error) {
     console.error('Redirect error:', error);
     res.status(500).json({ success: false, error: 'Erro no redirecionamento' });
