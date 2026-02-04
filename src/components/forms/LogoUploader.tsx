@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Upload, Trash2, ImageIcon } from 'lucide-react';
-import { useFileUpload } from '@/hooks/useFileUpload';
+import { Upload, Trash2, ImageIcon, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface LogoUploaderProps {
   value: string | undefined;
@@ -15,16 +15,63 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
   onChange,
   label = 'Logo do Formulário',
 }) => {
-  const { isUploading, uploadLogo } = useFileUpload();
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const result = await uploadLogo(file);
-    if (result) {
-      onChange(result.url);
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, selecione uma imagem válida',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'Erro',
+        description: 'A imagem deve ter no máximo 2MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        onChange(base64);
+        setIsUploading(false);
+        toast({
+          title: 'Logo enviada',
+          description: 'A logo foi carregada com sucesso',
+        });
+      };
+      reader.onerror = () => {
+        setIsUploading(false);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar a imagem',
+          variant: 'destructive',
+        });
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setIsUploading(false);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao processar a imagem',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -53,7 +100,11 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
               onClick={() => inputRef.current?.click()}
               disabled={isUploading}
             >
-              <Upload className="mr-2 h-4 w-4" />
+              {isUploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
               Alterar
             </Button>
             <Button
@@ -70,9 +121,13 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
       ) : (
         <div
           className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => !isUploading && inputRef.current?.click()}
         >
-          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+          {isUploading ? (
+            <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+          ) : (
+            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+          )}
           <p className="text-sm text-muted-foreground">
             {isUploading ? 'Enviando...' : 'Clique para enviar uma logo'}
           </p>
