@@ -524,6 +524,61 @@ const FormEditor: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Floating WhatsApp Button Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Botão Flutuante WhatsApp
+                </CardTitle>
+                <CardDescription>
+                  Exibir um botão de contato via WhatsApp no canto do formulário
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Botão Flutuante</p>
+                    <p className="text-sm text-muted-foreground">
+                      Mostrar botão de WhatsApp no canto inferior esquerdo
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localForm.settings?.whatsapp_float_enabled}
+                    onCheckedChange={(v) => handleSettingsChange('whatsapp_float_enabled', v)}
+                  />
+                </div>
+                {localForm.settings?.whatsapp_float_enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_float_number">Número do WhatsApp</Label>
+                      <Input
+                        id="whatsapp_float_number"
+                        value={localForm.settings?.whatsapp_float_number || ''}
+                        onChange={(e) => handleSettingsChange('whatsapp_float_number', e.target.value)}
+                        placeholder="5511999998888"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Número que será contatado ao clicar no botão (com DDD e código do país)
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_float_message">Mensagem Inicial (opcional)</Label>
+                      <Input
+                        id="whatsapp_float_message"
+                        value={localForm.settings?.whatsapp_float_message || ''}
+                        onChange={(e) => handleSettingsChange('whatsapp_float_message', e.target.value)}
+                        placeholder="Olá! Vim pelo formulário e gostaria de mais informações."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Mensagem pré-preenchida que aparece no WhatsApp ao clicar
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Webhook</CardTitle>
