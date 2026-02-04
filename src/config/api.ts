@@ -1,7 +1,8 @@
 // API Configuration
 // Configure your Easypanel backend URL here
+// Set VITE_API_URL in Lovable: Settings → Environment Variables
+// Example: https://formbuilder-api.easypanel.host/api
 export const API_CONFIG = {
-  // Change this to your Easypanel API URL
   BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
   
   // Endpoints
