@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Lead } from '@/types';
+import { extractLeadMainFields } from '@/lib/lead-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,58 +109,6 @@ const LeadsList: React.FC = () => {
       formId: formFilter === 'all' ? undefined : formFilter,
       format 
     });
-  };
-
-  const getMainFields = (data: Record<string, any>) => {
-    let name = '-';
-    let email = '-';
-    let phone = '-';
-    
-    // Search through all keys to find matching fields by pattern
-    for (const [key, value] of Object.entries(data)) {
-      const keyLower = key.toLowerCase();
-      const strValue = String(value || '').trim();
-      
-      if (!strValue) continue;
-      
-      // Name detection
-      if (name === '-' && (
-        keyLower.includes('nome') || 
-        keyLower.includes('name') ||
-        keyLower === 'nome completo' ||
-        keyLower === 'seu nome'
-      )) {
-        name = strValue;
-      }
-      
-      // Email detection
-      if (email === '-' && (
-        keyLower.includes('email') || 
-        keyLower.includes('e-mail') ||
-        strValue.includes('@')
-      )) {
-        email = strValue;
-      }
-      
-      // Phone/WhatsApp detection
-      if (phone === '-' && (
-        keyLower.includes('telefone') || 
-        keyLower.includes('phone') ||
-        keyLower.includes('whatsapp') ||
-        keyLower.includes('celular') ||
-        keyLower.includes('contato') ||
-        /^\+?\d[\d\s()-]{8,}$/.test(strValue.replace(/\D/g, '').length >= 10 ? strValue : '')
-      )) {
-        phone = strValue;
-      }
-    }
-    
-    // Fallback: try direct keys
-    if (name === '-') name = data.name || data.nome || data.Name || data.Nome || '-';
-    if (email === '-') email = data.email || data.Email || '-';
-    if (phone === '-') phone = data.phone || data.telefone || data.whatsapp || data.celular || '-';
-    
-    return { name, email, phone };
   };
 
   return (
@@ -235,7 +184,7 @@ const LeadsList: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => {
-                    const { name, email, phone } = getMainFields(lead.data);
+                    const { name, email, phone } = extractLeadMainFields(lead.data);
                     return (
                       <TableRow key={lead.id}>
                         <TableCell className="font-medium">{name}</TableCell>
