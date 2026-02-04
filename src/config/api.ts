@@ -3,7 +3,7 @@
 // Set VITE_API_URL in Lovable: Settings → Environment Variables
 // Example: https://formbuilder-api.easypanel.host/api
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  BASE_URL: import.meta.env.VITE_API_URL || 'https://teste-formflow-backend.exf0ty.easypanel.host/api',
   
   // Endpoints
   ENDPOINTS: {
