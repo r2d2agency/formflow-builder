@@ -23,13 +23,30 @@ if (missingEnv.length) {
 }
 
 // Database connection
-const pool = new Pool({
+// Prefer DATABASE_URL when provided (common in managed Postgres providers)
+const DB_SSL = String(process.env.DB_SSL || '').toLowerCase() === 'true';
+const dbPublicConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 5432),
   user: process.env.DB_USER || 'formbuilder',
-  password: process.env.DB_PASSWORD || 'changeme123',
   database: process.env.DB_NAME || 'formbuilder',
-});
+  ssl: DB_SSL,
+  using_database_url: Boolean(process.env.DATABASE_URL),
+};
+
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: DB_SSL ? { rejectUnauthorized: false } : undefined,
+    })
+  : new Pool({
+      host: dbPublicConfig.host,
+      port: dbPublicConfig.port,
+      user: dbPublicConfig.user,
+      password: process.env.DB_PASSWORD || 'changeme123',
+      database: dbPublicConfig.database,
+      ssl: DB_SSL ? { rejectUnauthorized: false } : undefined,
+    });
 
 pool.on('error', (err) => {
   console.error('[db] Unexpected idle client error:', {
@@ -64,7 +81,17 @@ app.get('/health', async (req, res) => {
       message: err?.message,
       code: err?.code,
     });
-    return res.status(500).json({ status: 'error', db: 'error', timestamp: new Date().toISOString() });
+    return res.status(500).json({
+      status: 'error',
+      db: 'error',
+      // do not expose secrets, but expose enough to debug env misconfig
+      error: {
+        code: err?.code,
+        message: err?.message,
+      },
+      db_config: dbPublicConfig,
+      timestamp: new Date().toISOString(),
+    });
   }
 });
 
