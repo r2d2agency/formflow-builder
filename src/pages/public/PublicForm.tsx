@@ -37,7 +37,7 @@ const useCustomStyles = (form: Form | undefined) => {
   } as React.CSSProperties;
 };
 
-// Typeform style - one question at a time
+// Typeform style - one question at a time with slide animation
 const TypeformRenderer: React.FC<{
   form: Form;
   onSubmit: (data: Record<string, any>) => Promise<void>;
@@ -47,6 +47,8 @@ const TypeformRenderer: React.FC<{
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentValue, setCurrentValue] = useState<string | string[]>('');
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [isAnimating, setIsAnimating] = useState(false);
   const customStyles = useCustomStyles(form);
 
   const fields = form.fields || [];
@@ -69,16 +71,26 @@ const TypeformRenderer: React.FC<{
       if (isLastField) {
         onSubmit({ ...answers, [currentField.label]: currentValue });
       } else {
-        setCurrentIndex((prev) => prev + 1);
-        setCurrentValue(answers[fields[currentIndex + 1]?.label] || '');
+        setSlideDirection('left');
+        setIsAnimating(true);
+        setTimeout(() => {
+          setCurrentIndex((prev) => prev + 1);
+          setCurrentValue(answers[fields[currentIndex + 1]?.label] || '');
+          setIsAnimating(false);
+        }, 300);
       }
     }
   };
 
   const handleBack = () => {
     if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-      setCurrentValue(answers[fields[currentIndex - 1]?.label] || '');
+      setSlideDirection('right');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => prev - 1);
+        setCurrentValue(answers[fields[currentIndex - 1]?.label] || '');
+        setIsAnimating(false);
+      }, 300);
     }
   };
 
@@ -92,7 +104,8 @@ const TypeformRenderer: React.FC<{
   const renderInput = () => {
     if (!currentField) return null;
 
-    const baseInputClass = "h-14 text-xl border-0 border-b border-current/30 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current placeholder:opacity-50";
+    // Style: only bottom border (underline style like Typeform)
+    const baseInputClass = "h-14 text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current focus:border-current placeholder:opacity-50 transition-colors";
 
     switch (currentField.type) {
       case 'textarea':
@@ -102,7 +115,7 @@ const TypeformRenderer: React.FC<{
             value={typeof currentValue === 'string' ? currentValue : ''}
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] text-xl border-0 border-b border-current/30 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current placeholder:opacity-50 resize-none"
+            className="min-h-[100px] text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current focus:border-current placeholder:opacity-50 resize-none transition-colors"
             autoFocus
           />
         );
@@ -146,7 +159,7 @@ const TypeformRenderer: React.FC<{
             onValueChange={(val) => setCurrentValue(val)}
           >
             <SelectTrigger 
-              className="h-14 text-lg border-current/30 bg-white/10 backdrop-blur-sm"
+              className="h-14 text-lg border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:ring-0"
               style={{ color: 'var(--form-text)', borderColor: 'currentColor' }}
             >
               <SelectValue placeholder="Selecione uma opção" />
@@ -174,9 +187,9 @@ const TypeformRenderer: React.FC<{
             {(currentField.options || []).map((option, i) => (
               <label
                 key={i}
-                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors hover:bg-white/10"
                 style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
                   color: 'inherit'
                 }}
               >
@@ -196,9 +209,9 @@ const TypeformRenderer: React.FC<{
             {(currentField.options || []).map((option, i) => (
               <label
                 key={i}
-                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors hover:bg-white/10"
                 style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
                   color: 'inherit'
                 }}
               >
@@ -239,10 +252,18 @@ const TypeformRenderer: React.FC<{
 
   const progress = ((currentIndex + 1) / fields.length) * 100;
 
+  // Animation classes based on direction
+  const getAnimationClass = () => {
+    if (!isAnimating) return 'translate-x-0 opacity-100';
+    return slideDirection === 'left' 
+      ? '-translate-x-full opacity-0' 
+      : 'translate-x-full opacity-0';
+  };
+
   return (
     <div 
       className={cn(
-        "flex flex-col",
+        "flex flex-col overflow-hidden",
         isEmbed ? "min-h-full" : "min-h-screen"
       )}
       style={{ 
@@ -263,16 +284,21 @@ const TypeformRenderer: React.FC<{
       )}
 
       {/* Progress bar */}
-      <div className={cn("left-0 right-0 h-1 bg-muted", isEmbed ? "relative mt-4" : "fixed top-0")}>
+      <div className={cn("left-0 right-0 h-1 bg-current/10", isEmbed ? "relative mt-4" : "fixed top-0")}>
         <div
-          className="h-full transition-all duration-300"
+          className="h-full transition-all duration-500 ease-out"
           style={{ width: `${progress}%`, backgroundColor: 'var(--form-primary)' }}
         />
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-xl space-y-8 text-center">
+      {/* Main content with slide animation */}
+      <div className="flex flex-1 items-center justify-center p-6 overflow-hidden">
+        <div 
+          className={cn(
+            "w-full max-w-xl space-y-8 text-center transition-all duration-300 ease-out",
+            getAnimationClass()
+          )}
+        >
           {/* Question number */}
           <div className="flex items-center justify-center gap-2 opacity-70">
             <span className="text-sm font-medium">
@@ -293,7 +319,7 @@ const TypeformRenderer: React.FC<{
             <div className="flex items-center justify-center gap-4 pt-2">
               <Button
                 onClick={handleNext}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isAnimating}
                 className="gap-2 px-6"
                 style={{ 
                   backgroundColor: 'var(--form-button-text)',
@@ -331,7 +357,8 @@ const TypeformRenderer: React.FC<{
           variant="outline"
           size="icon"
           onClick={handleBack}
-          disabled={currentIndex === 0}
+          disabled={currentIndex === 0 || isAnimating}
+          className="border-current/30 bg-transparent hover:bg-current/10"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -339,7 +366,8 @@ const TypeformRenderer: React.FC<{
           variant="outline"
           size="icon"
           onClick={handleNext}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isAnimating}
+          className="border-current/30 bg-transparent hover:bg-current/10"
         >
           <ArrowRight className="h-4 w-4" />
         </Button>
