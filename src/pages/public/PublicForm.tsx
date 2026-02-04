@@ -17,10 +17,11 @@ import { useFormBySlug } from '@/hooks/useForms';
 import apiService from '@/services/api';
 import { API_CONFIG } from '@/config/api';
 import { toast } from '@/hooks/use-toast';
-import { ArrowRight, ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Loader2, MessageCircle } from 'lucide-react';
 import type { Form, FormField } from '@/types';
 import { cn } from '@/lib/utils';
 import MaskedInput from '@/components/forms/MaskedInput';
+import WhatsAppFloatButton from '@/components/forms/WhatsAppFloatButton';
 
 // Helper to apply custom colors
 const useCustomStyles = (form: Form | undefined) => {
@@ -104,8 +105,8 @@ const TypeformRenderer: React.FC<{
   const renderInput = () => {
     if (!currentField) return null;
 
-    // Style: only bottom border (underline style like Typeform)
-    const baseInputClass = "h-14 text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current focus:border-current placeholder:opacity-50 transition-colors";
+    // Style: only bottom border (underline style like Typeform) - no focus outline/ring
+    const baseInputClass = "h-14 text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-current focus:border-current placeholder:opacity-50 transition-colors";
 
     switch (currentField.type) {
       case 'textarea':
@@ -115,7 +116,7 @@ const TypeformRenderer: React.FC<{
             value={typeof currentValue === 'string' ? currentValue : ''}
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current focus:border-current placeholder:opacity-50 resize-none transition-colors"
+            className="min-h-[100px] text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-current focus:border-current placeholder:opacity-50 resize-none transition-colors"
             autoFocus
           />
         );
@@ -360,6 +361,15 @@ const TypeformRenderer: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* Floating WhatsApp Button */}
+      {form.settings?.whatsapp_float_enabled && form.settings?.whatsapp_float_number && (
+        <WhatsAppFloatButton
+          phoneNumber={form.settings.whatsapp_float_number}
+          message={form.settings.whatsapp_float_message}
+          position="left"
+        />
+      )}
     </div>
   );
 };
@@ -493,6 +503,15 @@ const ChatRenderer: React.FC<{
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Floating WhatsApp Button */}
+      {form.settings?.whatsapp_float_enabled && form.settings?.whatsapp_float_number && (
+        <WhatsAppFloatButton
+          phoneNumber={form.settings.whatsapp_float_number}
+          message={form.settings.whatsapp_float_message}
+          position="left"
+        />
       )}
     </div>
   );
@@ -700,6 +719,15 @@ const StandardRenderer: React.FC<{
           </Button>
         </form>
       </div>
+
+      {/* Floating WhatsApp Button */}
+      {form.settings?.whatsapp_float_enabled && form.settings?.whatsapp_float_number && (
+        <WhatsAppFloatButton
+          phoneNumber={form.settings.whatsapp_float_number}
+          message={form.settings.whatsapp_float_message}
+          position="left"
+        />
+      )}
     </div>
   );
 };

@@ -89,6 +89,10 @@ export interface FormSettings {
   button_text_color?: string;
   logo_url?: string;
   whatsapp_message?: WhatsAppMessage;
+  // Floating WhatsApp button
+  whatsapp_float_enabled?: boolean;
+  whatsapp_float_number?: string;
+  whatsapp_float_message?: string;
 }
 
 export interface Form {
