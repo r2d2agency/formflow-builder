@@ -57,6 +57,20 @@ export interface FieldValidation {
   message?: string;
 }
 
+// WhatsApp Message Types
+export interface WhatsAppMessageItem {
+  id: string;
+  type: 'text' | 'audio' | 'video' | 'document';
+  content: string; // text content or file URL
+  filename?: string; // original filename for documents
+  mimeType?: string;
+}
+
+export interface WhatsAppMessage {
+  items: WhatsAppMessageItem[];
+  delay_seconds?: number; // delay between messages
+}
+
 export interface FormSettings {
   redirect_url?: string;
   facebook_pixel?: string;
@@ -73,6 +87,7 @@ export interface FormSettings {
   text_color?: string;
   button_text_color?: string;
   logo_url?: string;
+  whatsapp_message?: WhatsAppMessage;
 }
 
 export interface Form {

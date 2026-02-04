@@ -11,6 +11,7 @@ const evolutionRoutes = require('./routes/evolution');
 const dashboardRoutes = require('./routes/dashboard');
 const publicRoutes = require('./routes/public');
 const settingsRoutes = require('./routes/settings');
+const uploadsRoutes = require('./routes/uploads');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -65,7 +66,8 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Health check
 app.get('/health', async (req, res) => {
@@ -106,9 +108,8 @@ app.use('/api/evolution-instances', evolutionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/uploads', uploadsRoutes);
 
-// Increase payload limit for logo uploads
-app.use(express.json({ limit: '10mb' }));
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ success: false, error: 'Internal server error' });
