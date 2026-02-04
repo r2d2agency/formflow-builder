@@ -6,47 +6,51 @@ Sistema de formulários multi-estilo (Typeform, Chat, Standard) com painel admin
 
 ```
 formflow-builder/
-├── backend/           # API Node.js (deploy no Easypanel)
+├── Dockerfile              # Frontend Docker (deploy no Easypanel)
+├── nginx.conf              # Nginx config para SPA
+├── docker-compose.yml      # Stack completa (dev local)
+│
+├── backend/                # API Node.js (deploy no Easypanel)
 │   ├── Dockerfile
-│   ├── docker-compose.yml
+│   ├── docker-compose.yml  # Apenas backend + DB
 │   ├── package.json
 │   └── src/
 │       └── ...
 │
-├── src/               # Frontend React (hospedado no Lovable)
+├── src/                    # Frontend React
 │   ├── components/
 │   ├── pages/
 │   ├── hooks/
 │   └── ...
 │
-└── docs/              # Documentação da API e Database
+└── docs/                   # Documentação
     ├── API.md
     └── DATABASE.md
 ```
 
-## Deploy
+## Deploy no Easypanel
 
-### Frontend (Lovable)
+### Opção 1: Frontend e Backend Separados (Recomendado)
 
-O frontend é automaticamente hospedado pelo Lovable. 
-
-**Configurar URL da API:**
-1. No Lovable, vá em Settings → Environment Variables
-2. Adicione: `VITE_API_URL=https://sua-api.easypanel.host/api`
-
-**URLs:**
-- Preview: https://id-preview--1adaa66b-6671-409e-9fcc-b2892d6994a7.lovable.app
-- Produção: Configure em Publish → Custom Domain
-
-### Backend (Easypanel)
-
+#### Frontend (Serviço 1)
 1. Crie um novo serviço no Easypanel
 2. Conecte via GitHub:
    - **Proprietário**: r2d2agency
    - **Repositório**: formflow-builder
    - **Ramo**: main
-   - **Caminho de Build**: `/backend`
+   - **Caminho de Build**: `/` (raiz)
+3. Configure a variável de ambiente:
+   ```
+   VITE_API_URL=https://sua-api.easypanel.host/api
+   ```
 
+#### Backend (Serviço 2)
+1. Crie outro serviço no Easypanel
+2. Conecte via GitHub:
+   - **Proprietário**: r2d2agency
+   - **Repositório**: formflow-builder
+   - **Ramo**: main
+   - **Caminho de Build**: `/backend`
 3. Configure as variáveis de ambiente:
    ```
    DB_HOST=seu-postgres-host
@@ -55,10 +59,24 @@ O frontend é automaticamente hospedado pelo Lovable.
    DB_PASSWORD=sua-senha-segura
    DB_NAME=formbuilder
    JWT_SECRET=sua-chave-jwt-secreta
-   CORS_ORIGIN=https://id-preview--1adaa66b-6671-409e-9fcc-b2892d6994a7.lovable.app
+   CORS_ORIGIN=https://seu-frontend.easypanel.host
    ```
 
-### PostgreSQL (Easypanel)
+#### PostgreSQL (Serviço 3)
+1. Crie um serviço PostgreSQL no Easypanel
+2. Execute o script `backend/init.sql` para criar as tabelas
+3. Configure as credenciais no serviço da API
+
+### Opção 2: Deploy Local com Docker Compose
+
+```bash
+# Sobe tudo (frontend + backend + postgres)
+docker-compose up -d
+
+# Acesse:
+# Frontend: http://localhost
+# Backend: http://localhost:3001/api
+```
 
 1. Crie um serviço PostgreSQL no Easypanel
 2. Execute o script `backend/init.sql` para criar as tabelas

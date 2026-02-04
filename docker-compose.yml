@@ -1,0 +1,69 @@
+# Full Stack Docker Compose (Frontend + Backend + Database)
+# Use this for local development or self-hosted deployment
+
+version: '3.8'
+
+services:
+  # Frontend (React/Vite)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001/api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - formbuilder-network
+
+  # Backend (Node.js/Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=formbuilder
+      - DB_PASSWORD=formbuilder_secret
+      - DB_NAME=formbuilder
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - CORS_ORIGIN=http://localhost
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - formbuilder-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: formbuilder
+      POSTGRES_PASSWORD: formbuilder_secret
+      POSTGRES_DB: formbuilder
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U formbuilder -d formbuilder"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - formbuilder-network
+
+volumes:
+  postgres_data:
+
+networks:
+  formbuilder-network:
+    driver: bridge
