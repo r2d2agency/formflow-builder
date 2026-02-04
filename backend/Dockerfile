@@ -3,15 +3,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Install dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy source code
 COPY . .
-
-# Build TypeScript (if using)
-# RUN npm run build
 
 # Expose port
 EXPOSE 3001

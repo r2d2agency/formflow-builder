@@ -1,0 +1,144 @@
+const express = require('express');
+const authMiddleware = require('../middleware/auth');
+
+const router = express.Router();
+
+// Apply auth middleware to all routes
+router.use(authMiddleware);
+
+// GET /api/evolution-instances
+router.get('/', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query('SELECT * FROM evolution_instances ORDER BY created_at DESC');
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get evolution instances error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar instâncias' });
+  }
+});
+
+// GET /api/evolution-instances/:id
+router.get('/:id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Get evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar instância' });
+  }
+});
+
+// POST /api/evolution-instances
+router.post('/', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { name, api_url, api_key, default_number, is_active } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [name, api_url, api_key, default_number, is_active ?? true]
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Create evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar instância' });
+  }
+});
+
+// PUT /api/evolution-instances/:id
+router.put('/:id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { name, api_url, api_key, default_number, is_active } = req.body;
+
+    const result = await pool.query(
+      `UPDATE evolution_instances 
+       SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
+       WHERE id = $6
+       RETURNING *`,
+      [name, api_url, api_key, default_number, is_active, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Update evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar instância' });
+  }
+});
+
+// DELETE /api/evolution-instances/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'DELETE FROM evolution_instances WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    res.json({ success: true, message: 'Instância excluída com sucesso' });
+  } catch (error) {
+    console.error('Delete evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao excluir instância' });
+  }
+});
+
+// POST /api/evolution-instances/:id/test
+router.post('/:id/test', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    const instance = result.rows[0];
+
+    // Test connection to Evolution API
+    try {
+      const response = await fetch(`${instance.api_url}/instance/fetchInstances`, {
+        headers: {
+          'apikey': instance.api_key,
+        },
+      });
+
+      if (response.ok) {
+        res.json({ success: true, message: 'Conexão estabelecida com sucesso' });
+      } else {
+        res.status(400).json({ success: false, error: 'Falha na conexão com Evolution API' });
+      }
+    } catch (fetchError) {
+      res.status(400).json({ success: false, error: 'Não foi possível conectar à Evolution API' });
+    }
+  } catch (error) {
+    console.error('Test evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao testar instância' });
+  }
+});
+
+module.exports = router;
