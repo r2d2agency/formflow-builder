@@ -12,6 +12,12 @@ export const API_CONFIG = {
     LOGOUT: '/auth/logout',
     ME: '/auth/me',
     
+    // Users
+    USERS: '/users',
+    USER_BY_ID: (id: string) => `/users/${id}`,
+    USER_PASSWORD: (id: string) => `/users/${id}/password`,
+    USER_FORMS: (id: string) => `/users/${id}/forms`,
+    
     // Forms
     FORMS: '/forms',
     FORM_BY_ID: (id: string) => `/forms/${id}`,

@@ -63,11 +63,22 @@ CREATE TABLE IF NOT EXISTS webhooks (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- User-Form permissions table (which users can access which forms)
+CREATE TABLE IF NOT EXISTS user_forms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, form_id)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
 CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_forms_form_id ON user_forms(form_id);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

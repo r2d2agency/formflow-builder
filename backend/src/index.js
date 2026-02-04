@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 
 const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
 const formsRoutes = require('./routes/forms');
 const leadsRoutes = require('./routes/leads');
 const evolutionRoutes = require('./routes/evolution');
@@ -97,6 +98,7 @@ app.get('/health', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/evolution-instances', evolutionRoutes);

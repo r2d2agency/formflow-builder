@@ -17,6 +17,7 @@ import FormsList from "./pages/admin/FormsList";
 import FormCreate from "./pages/admin/FormCreate";
 import FormEditor from "./pages/admin/FormEditor";
 import LeadsList from "./pages/admin/LeadsList";
+import UsersList from "./pages/admin/UsersList";
 import EvolutionInstances from "./pages/admin/EvolutionInstances";
 import WebhooksPage from "./pages/admin/WebhooksPage";
 import Settings from "./pages/admin/Settings";
@@ -74,6 +75,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <LeadsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <UsersList />
                 </ProtectedRoute>
               }
             />

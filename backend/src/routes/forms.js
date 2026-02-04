@@ -14,14 +14,39 @@ router.get('/', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM forms');
+    let countQuery, dataQuery;
+
+    if (isAdmin) {
+      // Admin sees all forms
+      countQuery = 'SELECT COUNT(*) FROM forms';
+      dataQuery = 'SELECT * FROM forms ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+    } else {
+      // Regular user only sees assigned forms
+      countQuery = `
+        SELECT COUNT(*) FROM forms f
+        INNER JOIN user_forms uf ON f.id = uf.form_id
+        WHERE uf.user_id = $1
+      `;
+      dataQuery = `
+        SELECT f.* FROM forms f
+        INNER JOIN user_forms uf ON f.id = uf.form_id
+        WHERE uf.user_id = $1
+        ORDER BY f.created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
+    }
+
+    const countResult = isAdmin 
+      ? await pool.query(countQuery)
+      : await pool.query(countQuery, [userId]);
     const total = parseInt(countResult.rows[0].count);
 
-    const result = await pool.query(
-      'SELECT * FROM forms ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
-    );
+    const result = isAdmin
+      ? await pool.query(dataQuery, [limit, offset])
+      : await pool.query(dataQuery, [userId, limit, offset]);
 
     res.json({
       success: true,

@@ -6,6 +6,7 @@ export interface User {
   role: 'admin' | 'user';
   created_at: string;
   updated_at: string;
+  assigned_forms?: { id: string; name: string; slug: string }[];
 }
 
 export interface AuthState {
@@ -13,6 +14,26 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+}
+
+export interface CreateUserPayload {
+  email: string;
+  password: string;
+  name: string;
+  role: 'admin' | 'user';
+  form_ids?: string[];
+}
+
+export interface UpdateUserPayload {
+  email: string;
+  name: string;
+  role: 'admin' | 'user';
+  form_ids?: string[];
+}
+
+export interface ChangePasswordPayload {
+  current_password?: string;
+  new_password: string;
 }
 
 // Form Types

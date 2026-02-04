@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   FileText,
   Users,
+  UserCog,
   Settings,
   LogOut,
   Menu,
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Formulários', href: '/admin/forms', icon: FileText },
   { name: 'Leads', href: '/admin/leads', icon: Users },
+  { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
   { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare },
   { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
   { name: 'Configurações', href: '/admin/settings', icon: Settings },
@@ -85,27 +87,29 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href || 
-                (item.href !== '/admin' && location.pathname.startsWith(item.href));
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
+            {navigation
+              .filter((item) => !item.adminOnly || user?.role === 'admin')
+              .map((item) => {
+                const isActive = location.pathname === item.href || 
+                  (item.href !== '/admin' && location.pathname.startsWith(item.href));
+                
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
           </nav>
 
           {/* User section */}
