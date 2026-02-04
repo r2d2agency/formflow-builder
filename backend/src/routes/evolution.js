@@ -141,4 +141,59 @@ router.post('/:id/test', async (req, res) => {
   }
 });
 
+// POST /api/evolution-instances/:id/send-test
+router.post('/:id/send-test', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { phone, message } = req.body;
+
+    if (!phone || !message) {
+      return res.status(400).json({ success: false, error: 'Telefone e mensagem são obrigatórios' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    const instance = result.rows[0];
+
+    // Clean phone number (remove non-digits)
+    const cleanPhone = phone.replace(/\D/g, '');
+
+    try {
+      const response = await fetch(`${instance.api_url}/message/sendText/${instance.name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': instance.api_key,
+        },
+        body: JSON.stringify({
+          number: cleanPhone,
+          textMessage: { text: message },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        res.json({ success: true, message: 'Mensagem enviada com sucesso', data });
+      } else {
+        console.error('Evolution API error:', data);
+        res.status(400).json({ success: false, error: data.message || 'Erro ao enviar mensagem' });
+      }
+    } catch (fetchError) {
+      console.error('Evolution fetch error:', fetchError);
+      res.status(400).json({ success: false, error: 'Não foi possível conectar à Evolution API' });
+    }
+  } catch (error) {
+    console.error('Send test message error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao enviar mensagem de teste' });
+  }
+});
+
 module.exports = router;
