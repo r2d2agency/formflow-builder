@@ -35,6 +35,7 @@ import {
   Trash2,
   TestTube,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EvolutionInstance } from '@/types';
@@ -53,6 +54,7 @@ const EvolutionInstances: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInstance, setEditingInstance] = useState<EvolutionInstance | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     api_url: '',
@@ -125,8 +127,13 @@ const EvolutionInstances: React.FC = () => {
     }
   };
 
-  const handleTest = (id: string) => {
-    testInstance.mutate(id);
+  const handleTest = async (id: string) => {
+    setTestingId(id);
+    try {
+      await testInstance.mutateAsync(id);
+    } finally {
+      setTestingId(null);
+    }
   };
 
   return (
@@ -209,8 +216,13 @@ const EvolutionInstances: React.FC = () => {
                             size="icon"
                             onClick={() => handleTest(instance.id)}
                             title="Testar conexão"
+                            disabled={testingId === instance.id}
                           >
-                            <TestTube className="h-4 w-4" />
+                            {testingId === instance.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <TestTube className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
