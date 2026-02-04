@@ -13,6 +13,10 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     const pool = req.app.locals.pool;
 
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
+    }
+
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -48,8 +52,12 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, error: 'Erro no servidor' });
+    console.error('[auth/login] error:', {
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+    });
+    res.status(500).json({ success: false, error: 'Erro no servidor', code: 'AUTH_LOGIN_FAILED' });
   }
 });
 
