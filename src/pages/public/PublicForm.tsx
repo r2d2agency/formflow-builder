@@ -272,105 +272,93 @@ const TypeformRenderer: React.FC<{
         color: 'var(--form-text)',
       }}
     >
-      {/* Logo */}
-      {form.settings?.logo_url && (
-        <div className="flex justify-center pt-6">
-          <img 
-            src={form.settings.logo_url} 
-            alt="Logo" 
-            className="max-h-16 object-contain"
-          />
-        </div>
-      )}
-
-      {/* Progress bar */}
-      <div className={cn("left-0 right-0 h-1 bg-current/10", isEmbed ? "relative mt-4" : "fixed top-0")}>
+      {/* Progress bar - top */}
+      <div className={cn("left-0 right-0 h-1 bg-current/10", isEmbed ? "relative" : "fixed top-0 z-10")}>
         <div
           className="h-full transition-all duration-500 ease-out"
           style={{ width: `${progress}%`, backgroundColor: 'var(--form-primary)' }}
         />
       </div>
 
-      {/* Main content with slide animation */}
-      <div className="flex flex-1 items-center justify-center p-6 overflow-hidden">
+      {/* Centered content container */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 overflow-hidden">
         <div 
           className={cn(
-            "w-full max-w-xl space-y-8 text-center transition-all duration-300 ease-out",
+            "w-full max-w-md flex flex-col items-center gap-6 transition-all duration-300 ease-out",
             getAnimationClass()
           )}
         >
+          {/* Logo */}
+          {form.settings?.logo_url && (
+            <img 
+              src={form.settings.logo_url} 
+              alt="Logo" 
+              className="max-h-12 object-contain"
+            />
+          )}
+
           {/* Question number */}
-          <div className="flex items-center justify-center gap-2 opacity-70">
-            <span className="text-sm font-medium">
-              {currentIndex + 1} → {fields.length}
-            </span>
-          </div>
+          <span className="text-sm font-medium opacity-60">
+            {currentIndex + 1} / {fields.length}
+          </span>
 
           {/* Question */}
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+          <h2 className="text-2xl font-bold tracking-tight text-center md:text-3xl">
             {currentField.label}
-            {currentField.required && <span className="text-destructive">*</span>}
+            {currentField.required && <span className="text-destructive ml-1">*</span>}
           </h2>
 
-          {/* Input */}
-          <div className="space-y-6 text-left">
+          {/* Input - full width */}
+          <div className="w-full">
             {renderInput()}
+          </div>
 
-            <div className="flex items-center justify-center gap-4 pt-2">
-              <Button
-                onClick={handleNext}
-                disabled={isSubmitting || isAnimating}
-                className="gap-2 px-6"
-                style={{ 
-                  backgroundColor: 'var(--form-button-text)',
-                  color: 'var(--form-bg)',
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Enviando...
-                  </>
-                ) : isLastField ? (
-                  <>
-                    {form.settings?.button_text || 'Enviar'}
-                    <Check className="h-4 w-4" />
-                  </>
-                ) : (
-                  <>
-                    OK
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-              <span className="text-sm opacity-60">
-                pressione <kbd className="px-1.5 py-0.5 text-xs opacity-80">Enter ↵</kbd>
-              </span>
-            </div>
+          {/* Action button - directly below input */}
+          <Button
+            onClick={handleNext}
+            disabled={isSubmitting || isAnimating}
+            className="w-full gap-2 h-12 text-base"
+            style={{ 
+              backgroundColor: 'var(--form-primary)',
+              color: 'var(--form-button-text)',
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Enviando...
+              </>
+            ) : isLastField ? (
+              <>
+                {form.settings?.button_text || 'Enviar'}
+                <Check className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Continuar
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </Button>
+
+          {/* Navigation arrows */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              disabled={currentIndex === 0 || isAnimating}
+              className="gap-1 opacity-60 hover:opacity-100"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+            <span className="text-xs opacity-40">|</span>
+            <span className="text-xs opacity-50">
+              <kbd className="px-1.5 py-0.5 rounded bg-current/10">Enter ↵</kbd>
+            </span>
           </div>
         </div>
-      </div>
-
-      {/* Navigation */}
-      <div className={cn("flex justify-center gap-2 pb-6", isEmbed ? "" : "fixed bottom-6 right-6")}>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleBack}
-          disabled={currentIndex === 0 || isAnimating}
-          className="border-current/30 bg-transparent hover:bg-current/10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleNext}
-          disabled={isSubmitting || isAnimating}
-          className="border-current/30 bg-transparent hover:bg-current/10"
-        >
-          <ArrowRight className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );
