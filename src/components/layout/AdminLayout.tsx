@@ -165,6 +165,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+
+        {/* Footer */}
+        <footer className="border-t bg-card px-4 py-3 text-center text-sm text-muted-foreground">
+          TNS - R2D2
+        </footer>
       </div>
     </div>
   );
