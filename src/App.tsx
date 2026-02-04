@@ -22,6 +22,8 @@ import EvolutionInstances from "./pages/admin/EvolutionInstances";
 import WebhooksPage from "./pages/admin/WebhooksPage";
 import Settings from "./pages/admin/Settings";
 import BrandingPage from "./pages/admin/BrandingPage";
+import LinksList from "./pages/admin/LinksList";
+import LinkStats from "./pages/admin/LinkStats";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +118,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <BrandingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/links"
+              element={
+                <ProtectedRoute>
+                  <LinksList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/links/:id"
+              element={
+                <ProtectedRoute>
+                  <LinkStats />
                 </ProtectedRoute>
               }
             />

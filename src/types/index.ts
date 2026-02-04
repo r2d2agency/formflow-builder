@@ -164,3 +164,41 @@ export interface DashboardStats {
   leads_this_week: number;
   leads_this_month: number;
 }
+
+// Short Links
+export interface ShortLink {
+  id: string;
+  code: string;
+  original_url: string;
+  title?: string;
+  is_active: boolean;
+  created_by?: string;
+  created_by_name?: string;
+  expires_at?: string;
+  created_at: string;
+  updated_at: string;
+  click_count?: number;
+}
+
+export interface LinkClick {
+  id: string;
+  link_id: string;
+  ip_address?: string;
+  user_agent?: string;
+  referer?: string;
+  country?: string;
+  city?: string;
+  device_type?: string;
+  browser?: string;
+  os?: string;
+  clicked_at: string;
+}
+
+export interface LinkStats {
+  clicks: LinkClick[];
+  device_stats: { device_type: string; count: number }[];
+  browser_stats: { browser: string; count: number }[];
+  daily_stats: { date: string; count: number }[];
+}
+
+export interface ShortLinkWithStats extends ShortLink, LinkStats {}

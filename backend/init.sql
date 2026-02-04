@@ -80,6 +80,34 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Short links table (URL shortener)
+CREATE TABLE IF NOT EXISTS short_links (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    original_url TEXT NOT NULL,
+    title VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Link clicks tracking table
+CREATE TABLE IF NOT EXISTS link_clicks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    link_id UUID NOT NULL REFERENCES short_links(id) ON DELETE CASCADE,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    referer TEXT,
+    country VARCHAR(100),
+    city VARCHAR(100),
+    device_type VARCHAR(50),
+    browser VARCHAR(100),
+    os VARCHAR(100),
+    clicked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
@@ -88,6 +116,10 @@ CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_forms_form_id ON user_forms(form_id);
 CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
+CREATE INDEX IF NOT EXISTS idx_short_links_code ON short_links(code);
+CREATE INDEX IF NOT EXISTS idx_short_links_is_active ON short_links(is_active);
+CREATE INDEX IF NOT EXISTS idx_link_clicks_link_id ON link_clicks(link_id);
+CREATE INDEX IF NOT EXISTS idx_link_clicks_clicked_at ON link_clicks(clicked_at DESC);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -114,6 +146,12 @@ CREATE TRIGGER update_forms_updated_at
 DROP TRIGGER IF EXISTS update_evolution_instances_updated_at ON evolution_instances;
 CREATE TRIGGER update_evolution_instances_updated_at
     BEFORE UPDATE ON evolution_instances
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_short_links_updated_at ON short_links;
+CREATE TRIGGER update_short_links_updated_at
+    BEFORE UPDATE ON short_links
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

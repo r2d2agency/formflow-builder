@@ -48,6 +48,10 @@ export const API_CONFIG = {
     
     // Public form submission
     SUBMIT_FORM: (slug: string) => `/public/forms/${slug}/submit`,
+    
+    // Short Links
+    LINKS: '/links',
+    LINK_BY_ID: (id: string) => `/links/${id}`,
   },
 };
 
