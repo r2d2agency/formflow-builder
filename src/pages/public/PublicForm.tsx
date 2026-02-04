@@ -92,7 +92,7 @@ const TypeformRenderer: React.FC<{
   const renderInput = () => {
     if (!currentField) return null;
 
-    const baseInputClass = "h-14 text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary";
+    const baseInputClass = "h-14 text-xl border-0 border-b border-current/30 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current placeholder:opacity-50";
 
     switch (currentField.type) {
       case 'textarea':
@@ -102,7 +102,7 @@ const TypeformRenderer: React.FC<{
             value={typeof currentValue === 'string' ? currentValue : ''}
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[120px] text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary"
+            className="min-h-[100px] text-xl border-0 border-b border-current/30 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-current placeholder:opacity-50 resize-none"
             autoFocus
           />
         );
@@ -253,7 +253,7 @@ const TypeformRenderer: React.FC<{
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-xl space-y-8 text-center">
           {/* Question number */}
-          <div className="flex items-center justify-center gap-2" style={{ color: 'var(--form-primary)' }}>
+          <div className="flex items-center justify-center gap-2 opacity-70">
             <span className="text-sm font-medium">
               {currentIndex + 1} → {fields.length}
             </span>
@@ -266,17 +266,17 @@ const TypeformRenderer: React.FC<{
           </h2>
 
           {/* Input */}
-          <div className="space-y-4 text-left">
+          <div className="space-y-6 text-left">
             {renderInput()}
 
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-4 pt-2">
               <Button
                 onClick={handleNext}
                 disabled={isSubmitting}
-                className="gap-2"
+                className="gap-2 px-6"
                 style={{ 
-                  backgroundColor: 'var(--form-primary)',
-                  color: 'var(--form-button-text)',
+                  backgroundColor: 'var(--form-button-text)',
+                  color: 'var(--form-bg)',
                 }}
               >
                 {isSubmitting ? (
@@ -296,8 +296,8 @@ const TypeformRenderer: React.FC<{
                   </>
                 )}
               </Button>
-              <span className="text-sm text-muted-foreground">
-                pressione <kbd className="rounded border px-1">Enter ↵</kbd>
+              <span className="text-sm opacity-60">
+                pressione <kbd className="px-1.5 py-0.5 text-xs opacity-80">Enter ↵</kbd>
               </span>
             </div>
           </div>
