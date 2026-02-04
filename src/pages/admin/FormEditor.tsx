@@ -500,6 +500,19 @@ const FormEditor: React.FC = () => {
                       </Select>
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_target_number">Número de Destino (WhatsApp)</Label>
+                      <Input
+                        id="whatsapp_target_number"
+                        value={localForm.settings?.whatsapp_target_number || ''}
+                        onChange={(e) => handleSettingsChange('whatsapp_target_number', e.target.value)}
+                        placeholder="5511999998888 (deixe vazio para usar o padrão da instância)"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Número que receberá as notificações. Se vazio, usa o número padrão da instância selecionada.
+                      </p>
+                    </div>
+
                     <div className="border-t pt-4">
                       <WhatsAppMessageEditor
                         value={localForm.settings?.whatsapp_message}
