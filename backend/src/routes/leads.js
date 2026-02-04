@@ -122,7 +122,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/leads/export
+// GET /api/leads/export/csv
 router.get('/export/csv', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
@@ -144,7 +144,6 @@ router.get('/export/csv', async (req, res) => {
 
     const result = await pool.query(query, params);
 
-    // Convert to CSV
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Nenhum lead encontrado' });
     }
@@ -166,6 +165,90 @@ router.get('/export/csv', async (req, res) => {
     res.send(csv);
   } catch (error) {
     console.error('Export leads error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao exportar leads' });
+  }
+});
+
+// GET /api/leads/export/excel
+router.get('/export/excel', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const formId = req.query.form_id;
+
+    let query = `
+      SELECT l.id, l.data, l.source, l.ip_address, l.created_at, f.name as form_name, f.fields
+      FROM leads l
+      JOIN forms f ON l.form_id = f.id
+    `;
+    const params = [];
+
+    if (formId) {
+      query += ' WHERE l.form_id = $1';
+      params.push(formId);
+    }
+
+    query += ' ORDER BY l.created_at DESC';
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Nenhum lead encontrado' });
+    }
+
+    // Get all unique field keys from lead data
+    const allKeys = new Set();
+    result.rows.forEach(row => {
+      if (row.data && typeof row.data === 'object') {
+        Object.keys(row.data).forEach(key => allKeys.add(key));
+      }
+    });
+    
+    const fieldKeys = Array.from(allKeys);
+    
+    // Build headers: fixed columns + dynamic field columns
+    const headers = ['ID', 'Formulário', ...fieldKeys, 'Fonte', 'IP', 'Data'];
+    
+    // Build rows
+    const rows = result.rows.map(row => {
+      const data = row.data || {};
+      const fieldValues = fieldKeys.map(key => {
+        const val = data[key];
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'object') return JSON.stringify(val);
+        return String(val).replace(/"/g, '""'); // Escape quotes for CSV
+      });
+      
+      return [
+        row.id,
+        row.form_name,
+        ...fieldValues,
+        row.source || '',
+        row.ip_address || '',
+        new Date(row.created_at).toLocaleString('pt-BR'),
+      ];
+    });
+
+    // Generate CSV with proper escaping for Excel
+    const escapeCell = (cell) => {
+      const str = String(cell);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // Add BOM for Excel UTF-8 compatibility
+    const BOM = '\uFEFF';
+    const csv = BOM + [
+      headers.map(escapeCell).join(','),
+      ...rows.map(row => row.map(escapeCell).join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=leads.xlsx.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Export leads Excel error:', error);
     res.status(500).json({ success: false, error: 'Erro ao exportar leads' });
   }
 });

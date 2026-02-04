@@ -103,8 +103,11 @@ const LeadsList: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    exportLeads.mutate(formFilter === 'all' ? undefined : formFilter);
+  const handleExport = (format: 'csv' | 'excel' = 'excel') => {
+    exportLeads.mutate({ 
+      formId: formFilter === 'all' ? undefined : formFilter,
+      format 
+    });
   };
 
   const getMainFields = (data: Record<string, any>) => {
@@ -170,9 +173,9 @@ const LeadsList: React.FC = () => {
               Visualize e gerencie os leads capturados
             </p>
           </div>
-          <Button onClick={handleExport} variant="outline">
+          <Button onClick={() => handleExport('excel')} variant="outline">
             <Download className="mr-2 h-4 w-4" />
-            Exportar CSV
+            Exportar Excel
           </Button>
         </div>
 
