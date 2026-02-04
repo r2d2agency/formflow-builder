@@ -48,6 +48,10 @@ export const useFormBySlug = (slug: string) => {
       return response.data;
     },
     enabled: !!slug,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    gcTime: 1000 * 60 * 10, // 10 min garbage collection
+    retry: 1, // Retry only once for faster feedback
+    retryDelay: 500,
   });
 };
 

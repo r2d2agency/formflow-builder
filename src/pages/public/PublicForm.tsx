@@ -804,10 +804,11 @@ const PublicForm: React.FC = () => {
   if (isLoading) {
     return (
       <div className={cn(
-        "flex items-center justify-center",
+        "flex flex-col items-center justify-center gap-3",
         isEmbed ? "min-h-full" : "min-h-screen"
       )}>
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-muted-foreground animate-pulse">Carregando...</span>
       </div>
     );
   }
