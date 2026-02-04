@@ -1,73 +1,111 @@
-# Welcome to your Lovable project
+# FormFlow Builder
 
-## Project info
+Sistema de formulários multi-estilo (Typeform, Chat, Standard) com painel administrativo para gestão de leads.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Arquitetura
 
-## How can I edit this code?
+```
+formflow-builder/
+├── backend/           # API Node.js (deploy no Easypanel)
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── package.json
+│   └── src/
+│       └── ...
+│
+├── src/               # Frontend React (hospedado no Lovable)
+│   ├── components/
+│   ├── pages/
+│   ├── hooks/
+│   └── ...
+│
+└── docs/              # Documentação da API e Database
+    ├── API.md
+    └── DATABASE.md
+```
 
-There are several ways of editing your application.
+## Deploy
 
-**Use Lovable**
+### Frontend (Lovable)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+O frontend é automaticamente hospedado pelo Lovable. 
 
-Changes made via Lovable will be committed automatically to this repo.
+**Configurar URL da API:**
+1. No Lovable, vá em Settings → Environment Variables
+2. Adicione: `VITE_API_URL=https://sua-api.easypanel.host/api`
 
-**Use your preferred IDE**
+**URLs:**
+- Preview: https://id-preview--1adaa66b-6671-409e-9fcc-b2892d6994a7.lovable.app
+- Produção: Configure em Publish → Custom Domain
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Backend (Easypanel)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Crie um novo serviço no Easypanel
+2. Conecte via GitHub:
+   - **Proprietário**: r2d2agency
+   - **Repositório**: formflow-builder
+   - **Ramo**: main
+   - **Caminho de Build**: `/backend`
 
-Follow these steps:
+3. Configure as variáveis de ambiente:
+   ```
+   DB_HOST=seu-postgres-host
+   DB_PORT=5432
+   DB_USER=formbuilder
+   DB_PASSWORD=sua-senha-segura
+   DB_NAME=formbuilder
+   JWT_SECRET=sua-chave-jwt-secreta
+   CORS_ORIGIN=https://id-preview--1adaa66b-6671-409e-9fcc-b2892d6994a7.lovable.app
+   ```
+
+### PostgreSQL (Easypanel)
+
+1. Crie um serviço PostgreSQL no Easypanel
+2. Execute o script `backend/init.sql` para criar as tabelas
+3. Configure as credenciais no serviço da API
+
+## Funcionalidades
+
+- ✅ 3 tipos de formulário (Typeform, Chat, Standard)
+- ✅ Editor drag-and-drop de campos
+- ✅ Captura e gestão de leads
+- ✅ Integração Evolution API (WhatsApp)
+- ✅ Webhooks customizados
+- ✅ Pixels de rastreamento (Facebook, Google)
+- ✅ Dashboard com estatísticas
+
+## Tecnologias
+
+**Frontend:**
+- React 18 + TypeScript
+- Tailwind CSS + shadcn/ui
+- React Query
+- React Router
+
+**Backend:**
+- Node.js + Express
+- PostgreSQL
+- JWT Authentication
+- Docker
+
+## Desenvolvimento Local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Frontend
+npm install
+npm run dev
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Backend
+cd backend
+npm install
+docker-compose up -d  # Sobe PostgreSQL
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Usuário Admin Padrão
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Após criar o banco, gere um hash bcrypt para sua senha em https://bcrypt-generator.com/ e atualize no `init.sql` ou via SQL:
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```sql
+UPDATE users SET password_hash = 'seu_hash_bcrypt' WHERE email = 'admin@formbuilder.com';
+```
