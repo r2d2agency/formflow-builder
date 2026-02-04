@@ -145,12 +145,21 @@ const TypeformRenderer: React.FC<{
             value={typeof currentValue === 'string' ? currentValue : ''} 
             onValueChange={(val) => setCurrentValue(val)}
           >
-            <SelectTrigger className="h-14 text-lg">
+            <SelectTrigger 
+              className="h-14 text-lg border-current/30 bg-white/10 backdrop-blur-sm"
+              style={{ color: 'var(--form-text)', borderColor: 'currentColor' }}
+            >
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border shadow-lg z-50">
               {(currentField.options || []).map((option, i) => (
-                <SelectItem key={i} value={option}>{option}</SelectItem>
+                <SelectItem 
+                  key={i} 
+                  value={option}
+                  className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -165,9 +174,16 @@ const TypeformRenderer: React.FC<{
             {(currentField.options || []).map((option, i) => (
               <label
                 key={i}
-                className="flex items-center gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors"
+                style={{ 
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  color: 'inherit'
+                }}
               >
-                <RadioGroupItem value={option} />
+                <RadioGroupItem 
+                  value={option} 
+                  className="border-current text-current"
+                />
                 <span className="text-lg">{option}</span>
               </label>
             ))}
@@ -180,7 +196,11 @@ const TypeformRenderer: React.FC<{
             {(currentField.options || []).map((option, i) => (
               <label
                 key={i}
-                className="flex items-center gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-current/30 p-4 cursor-pointer transition-colors"
+                style={{ 
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  color: 'inherit'
+                }}
               >
                 <Checkbox
                   checked={selectedValues.includes(option)}
@@ -191,6 +211,7 @@ const TypeformRenderer: React.FC<{
                       setCurrentValue(selectedValues.filter((v: string) => v !== option));
                     }
                   }}
+                  className="border-current"
                 />
                 <span className="text-lg">{option}</span>
               </label>

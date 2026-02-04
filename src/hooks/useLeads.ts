@@ -69,24 +69,40 @@ export const useDeleteLead = () => {
 
 export const useExportLeads = () => {
   return useMutation({
-    mutationFn: async (formId?: string) => {
-      const endpoint = formId
-        ? `${API_CONFIG.ENDPOINTS.LEADS_BY_FORM(formId)}/export`
-        : `${API_CONFIG.ENDPOINTS.LEADS}/export`;
+    mutationFn: async ({ formId, format = 'excel' }: { formId?: string; format?: 'csv' | 'excel' }) => {
+      const endpoint = format === 'excel' 
+        ? `${API_CONFIG.ENDPOINTS.LEADS}/export/excel${formId ? `?form_id=${formId}` : ''}`
+        : `${API_CONFIG.ENDPOINTS.LEADS}/export/csv${formId ? `?form_id=${formId}` : ''}`;
       
-      const response = await apiService.get<{ url: string }>(endpoint);
-      if (!response.success) {
-        throw new Error(response.error);
+      // For file download, we need to handle it differently
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao exportar leads');
       }
-      return response.data;
+      
+      // Get the blob and trigger download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = format === 'excel' ? 'leads.csv' : 'leads.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      return { success: true };
     },
-    onSuccess: (data) => {
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
+    onSuccess: () => {
       toast({
-        title: 'Exportação iniciada',
-        description: 'O download começará em instantes.',
+        title: 'Exportação concluída',
+        description: 'O arquivo foi baixado com sucesso.',
       });
     },
     onError: (error: Error) => {
