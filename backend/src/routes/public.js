@@ -62,6 +62,7 @@ router.post('/forms/:slug/submit', async (req, res) => {
 
     // Send WhatsApp notification if enabled
     if (settings.whatsapp_notification && settings.evolution_instance_id) {
+      console.log('WhatsApp notification enabled, instance:', settings.evolution_instance_id);
       try {
         // Get Evolution instance
         const instanceResult = await pool.query(
@@ -69,32 +70,67 @@ router.post('/forms/:slug/submit', async (req, res) => {
           [settings.evolution_instance_id]
         );
 
+        console.log('Instance found:', instanceResult.rows.length > 0);
+
         if (instanceResult.rows.length > 0) {
           const instance = instanceResult.rows[0];
           
-          // Format message
+          // Format message - use custom message or default
+          let message = settings.whatsapp_message || '🎉 Novo lead!\n\nFormulário: {{form_name}}\n\n{{dados}}';
+          
+          // Replace variables
+          message = message.replace(/\{\{form_name\}\}/g, form.name);
+          message = message.replace(/\{\{formulario\}\}/g, form.name);
+          
+          // Replace field variables
+          for (const [key, value] of Object.entries(data)) {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+            message = message.replace(regex, String(value || ''));
+          }
+          
+          // Replace {{dados}} with all data entries
           const dataEntries = Object.entries(data)
             .map(([key, value]) => `${key}: ${value}`)
             .join('\n');
-          
-          const message = `🎉 Novo lead!\n\nFormulário: ${form.name}\n\n${dataEntries}`;
+          message = message.replace(/\{\{dados\}\}/g, dataEntries);
 
-          // Send via Evolution API
-          await fetch(`${instance.api_url}/message/sendText/${instance.name}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': instance.api_key,
-            },
-            body: JSON.stringify({
-              number: instance.default_number,
-              textMessage: { text: message },
-            }),
-          });
+          // Determine target number (use settings override or instance default)
+          const targetNumber = settings.whatsapp_target_number || instance.default_number;
+          
+          if (!targetNumber) {
+            console.error('No target phone number configured');
+          } else {
+            console.log('Sending WhatsApp to:', targetNumber);
+            console.log('API URL:', `${instance.api_url}/message/sendText/${instance.name}`);
+            
+            // Send via Evolution API
+            const response = await fetch(`${instance.api_url}/message/sendText/${instance.name}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': instance.api_key,
+              },
+              body: JSON.stringify({
+                number: targetNumber.replace(/\D/g, ''),
+                textMessage: { text: message },
+              }),
+            });
+
+            const responseData = await response.json();
+            console.log('Evolution API response:', response.status, responseData);
+            
+            if (!response.ok) {
+              console.error('Evolution API error:', responseData);
+            }
+          }
         }
       } catch (whatsappError) {
         console.error('WhatsApp notification error:', whatsappError);
       }
+    } else {
+      console.log('WhatsApp notification not enabled or no instance configured');
+      console.log('settings.whatsapp_notification:', settings.whatsapp_notification);
+      console.log('settings.evolution_instance_id:', settings.evolution_instance_id);
     }
 
     res.status(201).json({
