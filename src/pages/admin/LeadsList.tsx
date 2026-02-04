@@ -108,9 +108,54 @@ const LeadsList: React.FC = () => {
   };
 
   const getMainFields = (data: Record<string, any>) => {
-    const name = data.name || data.nome || '-';
-    const email = data.email || '-';
-    const phone = data.phone || data.telefone || data.whatsapp || '-';
+    let name = '-';
+    let email = '-';
+    let phone = '-';
+    
+    // Search through all keys to find matching fields by pattern
+    for (const [key, value] of Object.entries(data)) {
+      const keyLower = key.toLowerCase();
+      const strValue = String(value || '').trim();
+      
+      if (!strValue) continue;
+      
+      // Name detection
+      if (name === '-' && (
+        keyLower.includes('nome') || 
+        keyLower.includes('name') ||
+        keyLower === 'nome completo' ||
+        keyLower === 'seu nome'
+      )) {
+        name = strValue;
+      }
+      
+      // Email detection
+      if (email === '-' && (
+        keyLower.includes('email') || 
+        keyLower.includes('e-mail') ||
+        strValue.includes('@')
+      )) {
+        email = strValue;
+      }
+      
+      // Phone/WhatsApp detection
+      if (phone === '-' && (
+        keyLower.includes('telefone') || 
+        keyLower.includes('phone') ||
+        keyLower.includes('whatsapp') ||
+        keyLower.includes('celular') ||
+        keyLower.includes('contato') ||
+        /^\+?\d[\d\s()-]{8,}$/.test(strValue.replace(/\D/g, '').length >= 10 ? strValue : '')
+      )) {
+        phone = strValue;
+      }
+    }
+    
+    // Fallback: try direct keys
+    if (name === '-') name = data.name || data.nome || data.Name || data.Nome || '-';
+    if (email === '-') email = data.email || data.Email || '-';
+    if (phone === '-') phone = data.phone || data.telefone || data.whatsapp || data.celular || '-';
+    
     return { name, email, phone };
   };
 
