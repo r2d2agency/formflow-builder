@@ -22,8 +22,6 @@ import {
   ArrowLeft,
   Save,
   Plus,
-  Trash2,
-  GripVertical,
   ExternalLink,
   Settings,
   Layers,
@@ -36,19 +34,7 @@ import { toast } from '@/hooks/use-toast';
 import type { Form, FormField, FormSettings } from '@/types';
 import LogoUploader from '@/components/forms/LogoUploader';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
-
-const fieldTypes = [
-  { value: 'text', label: 'Texto' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Telefone' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'textarea', label: 'Texto Longo' },
-  { value: 'number', label: 'Número' },
-  { value: 'date', label: 'Data' },
-  { value: 'select', label: 'Seleção' },
-  { value: 'radio', label: 'Múltipla Escolha' },
-  { value: 'checkbox', label: 'Checkbox' },
-];
+import FieldEditor from '@/components/forms/FieldEditor';
 
 const FormEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -235,67 +221,13 @@ const FormEditor: React.FC = () => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(localForm.fields || []).map((field, index) => (
-                  <div
+                {(localForm.fields || []).map((field) => (
+                  <FieldEditor
                     key={field.id}
-                    className="flex items-start gap-4 rounded-lg border p-4"
-                  >
-                    <div className="cursor-move text-muted-foreground">
-                      <GripVertical className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="space-y-2">
-                        <Label>Tipo</Label>
-                        <Select
-                          value={field.type}
-                          onValueChange={(v) => handleUpdateField(field.id, { type: v as any })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fieldTypes.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Label</Label>
-                        <Input
-                          value={field.label}
-                          onChange={(e) => handleUpdateField(field.id, { label: e.target.value })}
-                          placeholder="Nome do campo"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Placeholder</Label>
-                        <Input
-                          value={field.placeholder || ''}
-                          onChange={(e) => handleUpdateField(field.id, { placeholder: e.target.value })}
-                          placeholder="Texto de exemplo"
-                        />
-                      </div>
-                      <div className="flex items-end gap-4">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={field.required}
-                            onCheckedChange={(v) => handleUpdateField(field.id, { required: v })}
-                          />
-                          <Label>Obrigatório</Label>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveField(field.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                    field={field}
+                    onUpdate={(updates) => handleUpdateField(field.id, updates)}
+                    onRemove={() => handleRemoveField(field.id)}
+                  />
                 ))}
                 {(localForm.fields || []).length === 0 && (
                   <div className="text-center py-8">
