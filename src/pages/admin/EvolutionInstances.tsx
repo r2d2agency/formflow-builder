@@ -28,6 +28,7 @@ import {
   useUpdateEvolutionInstance,
   useDeleteEvolutionInstance,
   useTestEvolutionInstance,
+  useSendTestMessage,
 } from '@/hooks/useEvolutionInstances';
 import {
   Plus,
@@ -36,7 +37,9 @@ import {
   TestTube,
   MessageSquare,
   Loader2,
+  Send,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EvolutionInstance } from '@/types';
 import {
@@ -55,6 +58,11 @@ const EvolutionInstances: React.FC = () => {
   const [editingInstance, setEditingInstance] = useState<EvolutionInstance | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [sendTestInstance, setSendTestInstance] = useState<EvolutionInstance | null>(null);
+  const [testMessageData, setTestMessageData] = useState({
+    phone: '',
+    message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
+  });
   const [formData, setFormData] = useState({
     name: '',
     api_url: '',
@@ -68,6 +76,7 @@ const EvolutionInstances: React.FC = () => {
   const updateInstance = useUpdateEvolutionInstance();
   const deleteInstance = useDeleteEvolutionInstance();
   const testInstance = useTestEvolutionInstance();
+  const sendTestMessage = useSendTestMessage();
 
   // Mock data for demo
   const mockInstances: EvolutionInstance[] = [
@@ -134,6 +143,24 @@ const EvolutionInstances: React.FC = () => {
     } finally {
       setTestingId(null);
     }
+  };
+
+  const handleOpenSendTest = (instance: EvolutionInstance) => {
+    setSendTestInstance(instance);
+    setTestMessageData({
+      phone: instance.default_number || '',
+      message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
+    });
+  };
+
+  const handleSendTestMessage = async () => {
+    if (!sendTestInstance) return;
+    await sendTestMessage.mutateAsync({
+      id: sendTestInstance.id,
+      phone: testMessageData.phone,
+      message: testMessageData.message,
+    });
+    setSendTestInstance(null);
   };
 
   return (
@@ -211,6 +238,14 @@ const EvolutionInstances: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenSendTest(instance)}
+                            title="Enviar mensagem de teste"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -353,6 +388,63 @@ const EvolutionInstances: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Send Test Message Dialog */}
+      <Dialog open={!!sendTestInstance} onOpenChange={() => setSendTestInstance(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Mensagem de Teste</DialogTitle>
+            <DialogDescription>
+              Envie uma mensagem de teste via {sendTestInstance?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="test_phone">Número de WhatsApp</Label>
+              <Input
+                id="test_phone"
+                placeholder="5511999998888"
+                value={testMessageData.phone}
+                onChange={(e) => setTestMessageData({ ...testMessageData, phone: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Número com código do país (sem espaços ou símbolos)
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="test_message">Mensagem</Label>
+              <Textarea
+                id="test_message"
+                placeholder="Digite a mensagem de teste..."
+                value={testMessageData.message}
+                onChange={(e) => setTestMessageData({ ...testMessageData, message: e.target.value })}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendTestInstance(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendTestMessage}
+              disabled={sendTestMessage.isPending || !testMessageData.phone || !testMessageData.message}
+            >
+              {sendTestMessage.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Enviar Mensagem
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };

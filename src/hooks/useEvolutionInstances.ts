@@ -155,3 +155,31 @@ export const useTestEvolutionInstance = () => {
     },
   });
 };
+
+export const useSendTestMessage = () => {
+  return useMutation({
+    mutationFn: async ({ id, phone, message }: { id: string; phone: string; message: string }) => {
+      const response = await apiService.post<{ success: boolean }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCE_BY_ID(id)}/send-test`,
+        { phone, message }
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Mensagem enviada!',
+        description: 'A mensagem de teste foi enviada com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao enviar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
