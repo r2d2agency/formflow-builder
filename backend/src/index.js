@@ -10,6 +10,7 @@ const leadsRoutes = require('./routes/leads');
 const evolutionRoutes = require('./routes/evolution');
 const dashboardRoutes = require('./routes/dashboard');
 const publicRoutes = require('./routes/public');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -104,8 +105,10 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/evolution-instances', evolutionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/settings', settingsRoutes);
 
-// Error handler
+// Increase payload limit for logo uploads
+app.use(express.json({ limit: '10mb' }));
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ success: false, error: 'Internal server error' });
