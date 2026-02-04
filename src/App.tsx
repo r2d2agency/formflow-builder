@@ -21,6 +21,7 @@ import UsersList from "./pages/admin/UsersList";
 import EvolutionInstances from "./pages/admin/EvolutionInstances";
 import WebhooksPage from "./pages/admin/WebhooksPage";
 import Settings from "./pages/admin/Settings";
+import BrandingPage from "./pages/admin/BrandingPage";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/branding"
+              element={
+                <ProtectedRoute>
+                  <BrandingPage />
                 </ProtectedRoute>
               }
             />

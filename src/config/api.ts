@@ -39,6 +39,10 @@ export const API_CONFIG = {
     // Dashboard
     DASHBOARD_STATS: '/dashboard/stats',
     
+    // Settings
+    SETTINGS: '/settings',
+    SETTINGS_UPLOAD_LOGO: '/settings/upload-logo',
+    
     // Public form submission
     SUBMIT_FORM: (slug: string) => `/public/forms/${slug}/submit`,
   },

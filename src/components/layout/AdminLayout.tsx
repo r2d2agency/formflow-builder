@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Webhook,
   ChevronDown,
+  Palette,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ const navigation = [
   { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
   { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare },
   { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
+  { name: 'Branding', href: '/admin/branding', icon: Palette, adminOnly: true },
   { name: 'Configurações', href: '/admin/settings', icon: Settings },
 ];
 

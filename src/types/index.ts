@@ -70,6 +70,9 @@ export interface FormSettings {
   button_text?: string;
   primary_color?: string;
   background_color?: string;
+  text_color?: string;
+  button_text_color?: string;
+  logo_url?: string;
 }
 
 export interface Form {

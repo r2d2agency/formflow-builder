@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS user_forms (
     UNIQUE(user_id, form_id)
 );
 
+-- System settings table (branding, etc.)
+CREATE TABLE IF NOT EXISTS system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
@@ -79,6 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
 CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_forms_form_id ON user_forms(form_id);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -117,6 +126,14 @@ VALUES (
     'Administrador',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;
+
+-- Insert default system settings
+INSERT INTO system_settings (key, value) VALUES
+    ('system_name', 'FormBuilder'),
+    ('system_logo_url', ''),
+    ('primary_color', '#1e40af'),
+    ('accent_color', '#3b82f6')
+ON CONFLICT (key) DO NOTHING;
 
 -- Success message
 DO $$

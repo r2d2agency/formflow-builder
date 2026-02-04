@@ -387,6 +387,115 @@ const FormEditor: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Appearance Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Aparência</CardTitle>
+                <CardDescription>
+                  Personalize as cores do formulário
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="primary_color">Cor Primária (Botão)</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="primary_color"
+                        value={localForm.settings?.primary_color || '#1e40af'}
+                        onChange={(e) => handleSettingsChange('primary_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.primary_color || '#1e40af'}
+                        onChange={(e) => handleSettingsChange('primary_color', e.target.value)}
+                        placeholder="#1e40af"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="background_color">Cor de Fundo</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="background_color"
+                        value={localForm.settings?.background_color || '#f8fafc'}
+                        onChange={(e) => handleSettingsChange('background_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.background_color || '#f8fafc'}
+                        onChange={(e) => handleSettingsChange('background_color', e.target.value)}
+                        placeholder="#f8fafc"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="text_color">Cor do Texto</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="text_color"
+                        value={localForm.settings?.text_color || '#1e293b'}
+                        onChange={(e) => handleSettingsChange('text_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.text_color || '#1e293b'}
+                        onChange={(e) => handleSettingsChange('text_color', e.target.value)}
+                        placeholder="#1e293b"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="button_text_color">Cor do Texto do Botão</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="button_text_color"
+                        value={localForm.settings?.button_text_color || '#ffffff'}
+                        onChange={(e) => handleSettingsChange('button_text_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.button_text_color || '#ffffff'}
+                        onChange={(e) => handleSettingsChange('button_text_color', e.target.value)}
+                        placeholder="#ffffff"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Preview */}
+                <div 
+                  className="rounded-lg border p-4"
+                  style={{ backgroundColor: localForm.settings?.background_color || '#f8fafc' }}
+                >
+                  <p className="mb-2 text-sm font-medium" style={{ color: localForm.settings?.text_color || '#1e293b' }}>
+                    Preview do Formulário
+                  </p>
+                  <p className="mb-3 text-sm" style={{ color: localForm.settings?.text_color || '#1e293b' }}>
+                    Veja como ficará o formulário com as cores selecionadas.
+                  </p>
+                  <button
+                    className="rounded-lg px-4 py-2 text-sm font-medium"
+                    style={{ 
+                      backgroundColor: localForm.settings?.primary_color || '#1e40af',
+                      color: localForm.settings?.button_text_color || '#ffffff'
+                    }}
+                  >
+                    {localForm.settings?.button_text || 'Enviar'}
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Integrations Tab */}
