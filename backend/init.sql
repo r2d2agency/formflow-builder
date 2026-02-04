@@ -102,7 +102,7 @@ CREATE TRIGGER update_evolution_instances_updated_at
 INSERT INTO users (email, password_hash, name, role)
 VALUES (
     'admin@formbuilder.com',
-    '$2b$10$rQZ8K5Y5Q5Q5Q5Q5Q5Q5Q.5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q',
+    '$2a$12$l3ymPG9lNGiIxF9olYg5.elv9KAR7W8HfIVladYI.Sf4DehBGD6cm',
     'Administrador',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;
