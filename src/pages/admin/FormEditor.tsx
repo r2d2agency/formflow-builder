@@ -28,6 +28,9 @@ import {
   Webhook,
   BarChart3,
   MessageCircle,
+  Code,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
@@ -186,7 +189,7 @@ const FormEditor: React.FC = () => {
         </div>
 
         <Tabs defaultValue="fields" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="fields" className="gap-2">
               <Layers className="h-4 w-4" />
               Campos
@@ -202,6 +205,10 @@ const FormEditor: React.FC = () => {
             <TabsTrigger value="tracking" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Rastreamento
+            </TabsTrigger>
+            <TabsTrigger value="embed" className="gap-2">
+              <Code className="h-4 w-4" />
+              Embed
             </TabsTrigger>
           </TabsList>
 
@@ -579,9 +586,204 @@ const FormEditor: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Embed Tab */}
+          <TabsContent value="embed" className="space-y-4">
+            <EmbedSection slug={localForm.slug || ''} />
+          </TabsContent>
         </Tabs>
       </div>
     </AdminLayout>
+  );
+};
+
+// Embed Section Component
+const EmbedSection: React.FC<{ slug: string }> = ({ slug }) => {
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const formUrl = `${window.location.origin}/f/${slug}`;
+  const embedUrl = `${formUrl}?embed=1`;
+
+  const iframeCode = `<iframe 
+  src="${embedUrl}"
+  width="100%" 
+  height="600" 
+  frameborder="0"
+  style="border: none; border-radius: 8px;"
+></iframe>`;
+
+  const scriptCode = `<div id="formbuilder-embed-${slug}"></div>
+<script>
+  (function() {
+    var container = document.getElementById('formbuilder-embed-${slug}');
+    var iframe = document.createElement('iframe');
+    iframe.src = '${embedUrl}';
+    iframe.width = '100%';
+    iframe.height = '600';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '8px';
+    container.appendChild(iframe);
+  })();
+</script>`;
+
+  const popupCode = `<script>
+  function openForm${slug.replace(/-/g, '')}() {
+    var popup = window.open('${formUrl}', 'formbuilder', 'width=600,height=700,scrollbars=yes');
+    popup.focus();
+  }
+</script>
+<button onclick="openForm${slug.replace(/-/g, '')}()">
+  Abrir Formulário
+</button>`;
+
+  const handleCopy = async (code: string, type: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedCode(type);
+    toast({
+      title: 'Código copiado!',
+      description: 'Cole no seu site para incorporar o formulário.',
+    });
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code className="h-5 w-5" />
+            Incorporar Formulário
+          </CardTitle>
+          <CardDescription>
+            Use esses códigos para incorporar o formulário em outros sites
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Direct URL */}
+          <div className="space-y-2">
+            <Label>URL Direta</Label>
+            <p className="text-sm text-muted-foreground">
+              Link direto para o formulário
+            </p>
+            <div className="flex gap-2">
+              <Input value={formUrl} readOnly className="font-mono text-sm" />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleCopy(formUrl, 'url')}
+              >
+                {copiedCode === 'url' ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+              <Button variant="outline" size="icon" asChild>
+                <a href={formUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          {/* Iframe embed */}
+          <div className="space-y-2">
+            <Label>Embed com iFrame</Label>
+            <p className="text-sm text-muted-foreground">
+              Código simples para incorporar em qualquer site
+            </p>
+            <div className="relative">
+              <pre className="rounded-lg bg-muted p-4 text-sm overflow-x-auto">
+                <code>{iframeCode}</code>
+              </pre>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-2 right-2"
+                onClick={() => handleCopy(iframeCode, 'iframe')}
+              >
+                {copiedCode === 'iframe' ? (
+                  <><Check className="h-3 w-3 mr-1" /> Copiado</>
+                ) : (
+                  <><Copy className="h-3 w-3 mr-1" /> Copiar</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Script embed */}
+          <div className="space-y-2">
+            <Label>Embed com JavaScript</Label>
+            <p className="text-sm text-muted-foreground">
+              Para integração mais flexível via script
+            </p>
+            <div className="relative">
+              <pre className="rounded-lg bg-muted p-4 text-sm overflow-x-auto">
+                <code>{scriptCode}</code>
+              </pre>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-2 right-2"
+                onClick={() => handleCopy(scriptCode, 'script')}
+              >
+                {copiedCode === 'script' ? (
+                  <><Check className="h-3 w-3 mr-1" /> Copiado</>
+                ) : (
+                  <><Copy className="h-3 w-3 mr-1" /> Copiar</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Popup */}
+          <div className="space-y-2">
+            <Label>Abrir em Popup</Label>
+            <p className="text-sm text-muted-foreground">
+              Abre o formulário em uma nova janela popup
+            </p>
+            <div className="relative">
+              <pre className="rounded-lg bg-muted p-4 text-sm overflow-x-auto">
+                <code>{popupCode}</code>
+              </pre>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-2 right-2"
+                onClick={() => handleCopy(popupCode, 'popup')}
+              >
+                {copiedCode === 'popup' ? (
+                  <><Check className="h-3 w-3 mr-1" /> Copiado</>
+                ) : (
+                  <><Copy className="h-3 w-3 mr-1" /> Copiar</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pré-visualização do Embed</CardTitle>
+          <CardDescription>
+            Veja como o formulário ficará quando incorporado
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border overflow-hidden" style={{ height: '500px' }}>
+            <iframe
+              src={embedUrl}
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+              title="Form Preview"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 };
 

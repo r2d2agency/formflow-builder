@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFormBySlug } from '@/hooks/useForms';
 import apiService from '@/services/api';
 import { API_CONFIG } from '@/config/api';
@@ -10,16 +20,34 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowRight, ArrowLeft, Check, Loader2 } from 'lucide-react';
 import type { Form, FormField } from '@/types';
 import { cn } from '@/lib/utils';
+import MaskedInput from '@/components/forms/MaskedInput';
+
+// Helper to apply custom colors
+const useCustomStyles = (form: Form | undefined) => {
+  const primaryColor = form?.settings?.primary_color || '#1e40af';
+  const backgroundColor = form?.settings?.background_color || '#f8fafc';
+  const textColor = form?.settings?.text_color || '#1e293b';
+  const buttonTextColor = form?.settings?.button_text_color || '#ffffff';
+
+  return {
+    '--form-primary': primaryColor,
+    '--form-bg': backgroundColor,
+    '--form-text': textColor,
+    '--form-button-text': buttonTextColor,
+  } as React.CSSProperties;
+};
 
 // Typeform style - one question at a time
 const TypeformRenderer: React.FC<{
   form: Form;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   isSubmitting: boolean;
-}> = ({ form, onSubmit, isSubmitting }) => {
+  isEmbed?: boolean;
+}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [currentValue, setCurrentValue] = useState('');
+  const [currentValue, setCurrentValue] = useState<string | string[]>('');
+  const customStyles = useCustomStyles(form);
 
   const fields = form.fields || [];
   const currentField = fields[currentIndex];
@@ -27,7 +55,7 @@ const TypeformRenderer: React.FC<{
 
   const handleNext = () => {
     if (currentField) {
-      if (currentField.required && !currentValue.trim()) {
+      if (currentField.required && !currentValue.toString().trim()) {
         toast({
           title: 'Campo obrigatório',
           description: 'Por favor, preencha este campo.',
@@ -61,6 +89,129 @@ const TypeformRenderer: React.FC<{
     }
   };
 
+  const renderInput = () => {
+    if (!currentField) return null;
+
+    const baseInputClass = "h-14 text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary";
+
+    switch (currentField.type) {
+      case 'textarea':
+        return (
+          <Textarea
+            placeholder={currentField.placeholder || 'Digite sua resposta...'}
+            value={typeof currentValue === 'string' ? currentValue : ''}
+            onChange={(e) => setCurrentValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="min-h-[120px] text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary"
+            autoFocus
+          />
+        );
+      case 'whatsapp':
+        return (
+          <MaskedInput
+            mask="whatsapp"
+            value={typeof currentValue === 'string' ? currentValue : ''}
+            onChange={(val) => setCurrentValue(val)}
+            onKeyDown={handleKeyDown}
+            className={baseInputClass}
+            autoFocus
+          />
+        );
+      case 'phone':
+        return (
+          <MaskedInput
+            mask="phone"
+            value={typeof currentValue === 'string' ? currentValue : ''}
+            onChange={(val) => setCurrentValue(val)}
+            onKeyDown={handleKeyDown}
+            className={baseInputClass}
+            autoFocus
+          />
+        );
+      case 'email':
+        return (
+          <MaskedInput
+            mask="email"
+            value={typeof currentValue === 'string' ? currentValue : ''}
+            onChange={(val) => setCurrentValue(val)}
+            onKeyDown={handleKeyDown}
+            className={baseInputClass}
+            autoFocus
+          />
+        );
+      case 'select':
+        return (
+          <Select 
+            value={typeof currentValue === 'string' ? currentValue : ''} 
+            onValueChange={(val) => setCurrentValue(val)}
+          >
+            <SelectTrigger className="h-14 text-lg">
+              <SelectValue placeholder="Selecione uma opção" />
+            </SelectTrigger>
+            <SelectContent>
+              {(currentField.options || []).map((option, i) => (
+                <SelectItem key={i} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      case 'radio':
+        return (
+          <RadioGroup 
+            value={typeof currentValue === 'string' ? currentValue : ''} 
+            onValueChange={(val) => setCurrentValue(val)} 
+            className="space-y-3"
+          >
+            {(currentField.options || []).map((option, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <RadioGroupItem value={option} />
+                <span className="text-lg">{option}</span>
+              </label>
+            ))}
+          </RadioGroup>
+        );
+      case 'checkbox':
+        const selectedValues = Array.isArray(currentValue) ? currentValue : [];
+        return (
+          <div className="space-y-3">
+            {(currentField.options || []).map((option, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <Checkbox
+                  checked={selectedValues.includes(option)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setCurrentValue([...selectedValues, option]);
+                    } else {
+                      setCurrentValue(selectedValues.filter((v: string) => v !== option));
+                    }
+                  }}
+                />
+                <span className="text-lg">{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+      default:
+        return (
+          <Input
+            type={currentField.type === 'number' ? 'number' : currentField.type === 'date' ? 'date' : 'text'}
+            placeholder={currentField.placeholder || 'Digite sua resposta...'}
+            value={typeof currentValue === 'string' ? currentValue : ''}
+            onChange={(e) => setCurrentValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={baseInputClass}
+            autoFocus
+          />
+        );
+    }
+  };
+
   if (!currentField) {
     return null;
   }
@@ -68,20 +219,41 @@ const TypeformRenderer: React.FC<{
   const progress = ((currentIndex + 1) / fields.length) * 100;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-background to-muted">
+    <div 
+      className={cn(
+        "flex flex-col",
+        isEmbed ? "min-h-full" : "min-h-screen"
+      )}
+      style={{ 
+        ...customStyles,
+        backgroundColor: 'var(--form-bg)',
+        color: 'var(--form-text)',
+      }}
+    >
+      {/* Logo */}
+      {form.settings?.logo_url && (
+        <div className="flex justify-center pt-6">
+          <img 
+            src={form.settings.logo_url} 
+            alt="Logo" 
+            className="max-h-16 object-contain"
+          />
+        </div>
+      )}
+
       {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-muted">
+      <div className={cn("left-0 right-0 h-1 bg-muted", isEmbed ? "relative mt-4" : "fixed top-0")}>
         <div
-          className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${progress}%` }}
+          className="h-full transition-all duration-300"
+          style={{ width: `${progress}%`, backgroundColor: 'var(--form-primary)' }}
         />
       </div>
 
       {/* Main content */}
       <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-xl space-y-8">
+        <div className="w-full max-w-xl space-y-8 text-center">
           {/* Question number */}
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center justify-center gap-2" style={{ color: 'var(--form-primary)' }}>
             <span className="text-sm font-medium">
               {currentIndex + 1} → {fields.length}
             </span>
@@ -94,33 +266,18 @@ const TypeformRenderer: React.FC<{
           </h2>
 
           {/* Input */}
-          <div className="space-y-4">
-            {currentField.type === 'textarea' ? (
-              <Textarea
-                placeholder={currentField.placeholder || 'Digite sua resposta...'}
-                value={currentValue}
-                onChange={(e) => setCurrentValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="min-h-[120px] text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary"
-                autoFocus
-              />
-            ) : (
-              <Input
-                type={currentField.type === 'email' ? 'email' : currentField.type === 'phone' || currentField.type === 'whatsapp' ? 'tel' : currentField.type === 'number' ? 'number' : currentField.type === 'date' ? 'date' : 'text'}
-                placeholder={currentField.placeholder || 'Digite sua resposta...'}
-                value={currentValue}
-                onChange={(e) => setCurrentValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="h-14 text-lg border-0 border-b-2 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary"
-                autoFocus
-              />
-            )}
+          <div className="space-y-4 text-left">
+            {renderInput()}
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center gap-4">
               <Button
                 onClick={handleNext}
                 disabled={isSubmitting}
                 className="gap-2"
+                style={{ 
+                  backgroundColor: 'var(--form-primary)',
+                  color: 'var(--form-button-text)',
+                }}
               >
                 {isSubmitting ? (
                   <>
@@ -148,7 +305,7 @@ const TypeformRenderer: React.FC<{
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-6 right-6 flex gap-2">
+      <div className={cn("flex justify-center gap-2 pb-6", isEmbed ? "" : "fixed bottom-6 right-6")}>
         <Button
           variant="outline"
           size="icon"
@@ -175,12 +332,14 @@ const ChatRenderer: React.FC<{
   form: Form;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   isSubmitting: boolean;
-}> = ({ form, onSubmit, isSubmitting }) => {
+  isEmbed?: boolean;
+}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
   const [messages, setMessages] = useState<{ type: 'bot' | 'user'; text: string }[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isComplete, setIsComplete] = useState(false);
+  const customStyles = useCustomStyles(form);
 
   const fields = form.fields || [];
 
@@ -203,13 +362,11 @@ const ChatRenderer: React.FC<{
       }
     }
 
-    // Add user message
     setMessages((prev) => [...prev, { type: 'user', text: inputValue }]);
     const newAnswers = { ...answers, [currentField.label]: inputValue };
     setAnswers(newAnswers);
     setInputValue('');
 
-    // Check if there are more questions
     if (currentIndex < fields.length - 1) {
       const nextField = fields[currentIndex + 1];
       setTimeout(() => {
@@ -230,9 +387,19 @@ const ChatRenderer: React.FC<{
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div 
+      className={cn("flex flex-col", isEmbed ? "min-h-full" : "min-h-screen")}
+      style={{ ...customStyles, backgroundColor: 'var(--form-bg)' }}
+    >
       {/* Header */}
-      <div className="border-b bg-card p-4">
+      <div className="border-b bg-card p-4 text-center">
+        {form.settings?.logo_url && (
+          <img 
+            src={form.settings.logo_url} 
+            alt="Logo" 
+            className="mx-auto max-h-12 object-contain mb-2"
+          />
+        )}
         <h1 className="text-lg font-semibold">{form.name}</h1>
       </div>
 
@@ -250,9 +417,10 @@ const ChatRenderer: React.FC<{
               className={cn(
                 'max-w-[80%] rounded-2xl px-4 py-2',
                 msg.type === 'user'
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'text-white'
                   : 'bg-muted'
               )}
+              style={msg.type === 'user' ? { backgroundColor: 'var(--form-primary)' } : {}}
             >
               {msg.text}
             </div>
@@ -279,7 +447,11 @@ const ChatRenderer: React.FC<{
               disabled={isSubmitting}
               className="flex-1"
             />
-            <Button onClick={handleSend} disabled={isSubmitting}>
+            <Button 
+              onClick={handleSend} 
+              disabled={isSubmitting}
+              style={{ backgroundColor: 'var(--form-primary)', color: 'var(--form-button-text)' }}
+            >
               Enviar
             </Button>
           </div>
@@ -289,13 +461,15 @@ const ChatRenderer: React.FC<{
   );
 };
 
-// Standard form renderer
+// Standard form renderer - CENTRALIZED
 const StandardRenderer: React.FC<{
   form: Form;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   isSubmitting: boolean;
-}> = ({ form, onSubmit, isSubmitting }) => {
+  isEmbed?: boolean;
+}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const customStyles = useCustomStyles(form);
 
   const handleChange = (label: string, value: any) => {
     setFormData((prev) => ({ ...prev, [label]: value }));
@@ -304,10 +478,9 @@ const StandardRenderer: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     const fields = form.fields || [];
     for (const field of fields) {
-      if (field.required && !formData[field.label]?.trim()) {
+      if (field.required && !formData[field.label]?.toString().trim()) {
         toast({
           title: 'Campo obrigatório',
           description: `Por favor, preencha o campo "${field.label}".`,
@@ -321,53 +494,164 @@ const StandardRenderer: React.FC<{
   };
 
   const renderField = (field: FormField) => {
-    const commonProps = {
-      value: formData[field.label] || '',
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        handleChange(field.label, e.target.value),
-      placeholder: field.placeholder,
-      required: field.required,
-      disabled: isSubmitting,
-    };
+    const value = formData[field.label] || '';
 
-    if (field.type === 'textarea') {
-      return <Textarea {...commonProps} rows={4} />;
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <Textarea
+            value={value}
+            onChange={(e) => handleChange(field.label, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            disabled={isSubmitting}
+            rows={4}
+          />
+        );
+      case 'whatsapp':
+        return (
+          <MaskedInput
+            mask="whatsapp"
+            value={value}
+            onChange={(val) => handleChange(field.label, val)}
+            disabled={isSubmitting}
+          />
+        );
+      case 'phone':
+        return (
+          <MaskedInput
+            mask="phone"
+            value={value}
+            onChange={(val) => handleChange(field.label, val)}
+            disabled={isSubmitting}
+          />
+        );
+      case 'email':
+        return (
+          <MaskedInput
+            mask="email"
+            value={value}
+            onChange={(val) => handleChange(field.label, val)}
+            disabled={isSubmitting}
+          />
+        );
+      case 'select':
+        return (
+          <Select value={value} onValueChange={(val) => handleChange(field.label, val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma opção" />
+            </SelectTrigger>
+            <SelectContent>
+              {(field.options || []).map((option, i) => (
+                <SelectItem key={i} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      case 'radio':
+        return (
+          <RadioGroup value={value} onValueChange={(val) => handleChange(field.label, val)} className="space-y-2">
+            {(field.options || []).map((option, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <RadioGroupItem value={option} />
+                <span>{option}</span>
+              </label>
+            ))}
+          </RadioGroup>
+        );
+      case 'checkbox':
+        const selectedValues = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-2">
+            {(field.options || []).map((option, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <Checkbox
+                  checked={selectedValues.includes(option)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      handleChange(field.label, [...selectedValues, option]);
+                    } else {
+                      handleChange(field.label, selectedValues.filter((v: string) => v !== option));
+                    }
+                  }}
+                  disabled={isSubmitting}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+      default:
+        return (
+          <Input
+            value={value}
+            onChange={(e) => handleChange(field.label, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            disabled={isSubmitting}
+            type={
+              field.type === 'number' ? 'number' :
+              field.type === 'date' ? 'date' :
+              'text'
+            }
+          />
+        );
     }
-
-    return (
-      <Input
-        {...commonProps}
-        type={
-          field.type === 'email' ? 'email' :
-          field.type === 'phone' || field.type === 'whatsapp' ? 'tel' :
-          field.type === 'number' ? 'number' :
-          field.type === 'date' ? 'date' :
-          'text'
-        }
-      />
-    );
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <div className="w-full max-w-lg rounded-xl border bg-card p-8 shadow-lg">
-        <h1 className="mb-2 text-2xl font-bold">{form.name}</h1>
+    <div 
+      className={cn(
+        "flex items-center justify-center p-4",
+        isEmbed ? "min-h-full" : "min-h-screen"
+      )}
+      style={{ ...customStyles, backgroundColor: 'var(--form-bg)' }}
+    >
+      <div className="w-full max-w-lg rounded-xl border bg-card p-8 shadow-lg text-center">
+        {/* Logo */}
+        {form.settings?.logo_url && (
+          <div className="flex justify-center mb-6">
+            <img 
+              src={form.settings.logo_url} 
+              alt="Logo" 
+              className="max-h-20 object-contain"
+            />
+          </div>
+        )}
+
+        <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--form-text)' }}>
+          {form.name}
+        </h1>
         {form.description && (
           <p className="mb-6 text-muted-foreground">{form.description}</p>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
           {(form.fields || []).map((field) => (
             <div key={field.id} className="space-y-2">
-              <label className="text-sm font-medium">
+              <Label>
                 {field.label}
                 {field.required && <span className="text-destructive ml-1">*</span>}
-              </label>
+              </Label>
               {renderField(field)}
             </div>
           ))}
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isSubmitting}
+            style={{ 
+              backgroundColor: 'var(--form-primary)',
+              color: 'var(--form-button-text)',
+            }}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -383,10 +667,24 @@ const StandardRenderer: React.FC<{
   );
 };
 
-// Success screen
-const SuccessScreen: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+// Success screen - CENTRALIZED
+const SuccessScreen: React.FC<{ message?: string; logoUrl?: string; isEmbed?: boolean }> = ({ 
+  message, 
+  logoUrl, 
+  isEmbed 
+}) => (
+  <div className={cn(
+    "flex items-center justify-center bg-gradient-to-br from-background to-muted p-4",
+    isEmbed ? "min-h-full" : "min-h-screen"
+  )}>
     <div className="text-center space-y-4">
+      {logoUrl && (
+        <img 
+          src={logoUrl} 
+          alt="Logo" 
+          className="mx-auto max-h-16 object-contain mb-4"
+        />
+      )}
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
         <Check className="h-8 w-8 text-primary" />
       </div>
@@ -401,10 +699,13 @@ const SuccessScreen: React.FC<{ message?: string }> = ({ message }) => (
 // Main public form page
 const PublicForm: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: form, isLoading, error } = useFormBySlug(slug || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Check if embed mode
+  const isEmbed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
 
   // Mock form for demo
   const mockForm: Form = {
@@ -415,7 +716,7 @@ const PublicForm: React.FC = () => {
     fields: [
       { id: '1', type: 'text', label: 'Qual é o seu nome?', placeholder: 'Digite seu nome completo', required: true, order: 0 },
       { id: '2', type: 'email', label: 'Qual é o seu email?', placeholder: 'seu@email.com', required: true, order: 1 },
-      { id: '3', type: 'whatsapp', label: 'Qual é o seu WhatsApp?', placeholder: '11999998888', required: false, order: 2 },
+      { id: '3', type: 'whatsapp', label: 'Qual é o seu WhatsApp?', placeholder: '+55 (00) 00000-0000', required: false, order: 2 },
     ],
     settings: {
       webhook_enabled: false,
@@ -434,7 +735,6 @@ const PublicForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Try to submit to API
       const response = await apiService.post(
         API_CONFIG.ENDPOINTS.SUBMIT_FORM(slug || ''),
         { data }
@@ -446,14 +746,17 @@ const PublicForm: React.FC = () => {
 
       setIsSuccess(true);
 
-      // Handle redirect
       if (displayForm?.settings?.redirect_url) {
         setTimeout(() => {
-          window.location.href = displayForm.settings.redirect_url!;
+          if (isEmbed) {
+            // For embed, open in parent window
+            window.parent.location.href = displayForm.settings.redirect_url!;
+          } else {
+            window.location.href = displayForm.settings.redirect_url!;
+          }
         }, 2000);
       }
     } catch (err) {
-      // For demo, show success anyway
       console.log('Form submitted (demo):', data);
       setIsSuccess(true);
     } finally {
@@ -463,7 +766,10 @@ const PublicForm: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className={cn(
+        "flex items-center justify-center",
+        isEmbed ? "min-h-full" : "min-h-screen"
+      )}>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -471,7 +777,10 @@ const PublicForm: React.FC = () => {
 
   if (!displayForm) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className={cn(
+        "flex items-center justify-center p-4",
+        isEmbed ? "min-h-full" : "min-h-screen"
+      )}>
         <div className="text-center">
           <h1 className="text-2xl font-bold">Formulário não encontrado</h1>
           <p className="text-muted-foreground">
@@ -484,7 +793,10 @@ const PublicForm: React.FC = () => {
 
   if (!displayForm.is_active) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className={cn(
+        "flex items-center justify-center p-4",
+        isEmbed ? "min-h-full" : "min-h-screen"
+      )}>
         <div className="text-center">
           <h1 className="text-2xl font-bold">Formulário Desativado</h1>
           <p className="text-muted-foreground">
@@ -496,7 +808,13 @@ const PublicForm: React.FC = () => {
   }
 
   if (isSuccess) {
-    return <SuccessScreen message={displayForm.settings?.success_message} />;
+    return (
+      <SuccessScreen 
+        message={displayForm.settings?.success_message} 
+        logoUrl={displayForm.settings?.logo_url}
+        isEmbed={isEmbed}
+      />
+    );
   }
 
   // Render based on form type
@@ -507,6 +825,7 @@ const PublicForm: React.FC = () => {
           form={displayForm}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          isEmbed={isEmbed}
         />
       );
     case 'chat':
@@ -515,6 +834,7 @@ const PublicForm: React.FC = () => {
           form={displayForm}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          isEmbed={isEmbed}
         />
       );
     case 'standard':
@@ -524,6 +844,7 @@ const PublicForm: React.FC = () => {
           form={displayForm}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          isEmbed={isEmbed}
         />
       );
   }
