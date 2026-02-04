@@ -80,6 +80,7 @@ export interface FormSettings {
   webhook_enabled: boolean;
   whatsapp_notification: boolean;
   evolution_instance_id?: string;
+  whatsapp_target_number?: string;
   success_message?: string;
   button_text?: string;
   primary_color?: string;
