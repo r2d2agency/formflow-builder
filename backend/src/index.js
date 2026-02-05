@@ -13,6 +13,7 @@ const publicRoutes = require('./routes/public');
 const settingsRoutes = require('./routes/settings');
 const uploadsRoutes = require('./routes/uploads');
 const linksRoutes = require('./routes/links');
+const diagnosticsRoutes = require('./routes/diagnostics');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -127,6 +128,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/links', linksRoutes);
+app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/l', linksRoutes); // Public redirect route
 
 app.use((err, req, res, next) => {
