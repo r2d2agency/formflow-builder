@@ -623,15 +623,51 @@ const FormEditor: React.FC = () => {
                   Configure pixels de conversão para este formulário
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="facebook_pixel">Facebook Pixel ID</Label>
-                  <Input
-                    id="facebook_pixel"
-                    value={localForm.settings?.facebook_pixel || ''}
-                    onChange={(e) => handleSettingsChange('facebook_pixel', e.target.value)}
-                    placeholder="123456789012345"
-                  />
+              <CardContent className="space-y-6">
+                {/* Facebook Pixel Section */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm">Facebook Pixel (Conversions API)</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook_pixel">Pixel ID</Label>
+                    <Input
+                      id="facebook_pixel"
+                      value={localForm.settings?.facebook_pixel || ''}
+                      onChange={(e) => handleSettingsChange('facebook_pixel', e.target.value)}
+                      placeholder="123456789012345"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ID do seu Pixel do Facebook
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook_pixel_access_token">Access Token</Label>
+                    <Input
+                      id="facebook_pixel_access_token"
+                      type="password"
+                      value={localForm.settings?.facebook_pixel_access_token || ''}
+                      onChange={(e) => handleSettingsChange('facebook_pixel_access_token', e.target.value)}
+                      placeholder="EAAxxxxxxxxxxxxxxxx"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Token de acesso gerado no Gerenciador de Eventos do Facebook
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook_pixel_test_code">Test Event Code (opcional)</Label>
+                    <Input
+                      id="facebook_pixel_test_code"
+                      value={localForm.settings?.facebook_pixel_test_code || ''}
+                      onChange={(e) => handleSettingsChange('facebook_pixel_test_code', e.target.value)}
+                      placeholder="TEST12345"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Código para testar eventos no modo de desenvolvimento
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-medium text-sm">Google Analytics</h4>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="google_analytics">Google Analytics ID</Label>

@@ -73,7 +73,11 @@ export interface WhatsAppMessage {
 
 export interface FormSettings {
   redirect_url?: string;
+  // Facebook Pixel
   facebook_pixel?: string;
+  facebook_pixel_access_token?: string;
+  facebook_pixel_test_code?: string;
+  // Google
   google_analytics?: string;
   google_tag_manager?: string;
   webhook_url?: string;
