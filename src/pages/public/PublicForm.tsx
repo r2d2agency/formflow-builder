@@ -833,6 +833,51 @@ const PublicForm: React.FC = () => {
   // Check if embed mode
   const isEmbed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
 
+  // Inject custom head/body code for domain verification (Meta, Google, etc.)
+  useEffect(() => {
+    if (!form?.settings) return;
+
+    const { custom_head_code, custom_body_code } = form.settings;
+
+    // Inject head code
+    if (custom_head_code) {
+      const headFragment = document.createRange().createContextualFragment(custom_head_code);
+      const headElements = Array.from(headFragment.childNodes) as Element[];
+      headElements.forEach((el) => {
+        if (el.nodeType === Node.ELEMENT_NODE) {
+          (el as Element).setAttribute('data-custom-head', 'true');
+          document.head.appendChild(el);
+        }
+      });
+    }
+
+    // Inject body code
+    if (custom_body_code) {
+      const bodyContainer = document.createElement('div');
+      bodyContainer.setAttribute('data-custom-body', 'true');
+      bodyContainer.innerHTML = custom_body_code;
+      document.body.appendChild(bodyContainer);
+      
+      // Execute scripts manually
+      const scripts = bodyContainer.querySelectorAll('script');
+      scripts.forEach((script) => {
+        const newScript = document.createElement('script');
+        if (script.src) {
+          newScript.src = script.src;
+        } else {
+          newScript.textContent = script.textContent;
+        }
+        document.body.appendChild(newScript);
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.querySelectorAll('[data-custom-head="true"]').forEach((el) => el.remove());
+      document.querySelectorAll('[data-custom-body="true"]').forEach((el) => el.remove());
+    };
+  }, [form?.settings]);
+
   // Mock form for demo
   const mockForm: Form = {
     id: '1',
