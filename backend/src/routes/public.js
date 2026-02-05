@@ -205,6 +205,97 @@ router.post('/forms/:slug/submit', async (req, res) => {
       console.log('[WhatsApp] evolution_instance_id:', settings.evolution_instance_id);
     }
 
+    // Send Facebook Conversions API event if configured
+    if (settings.facebook_pixel && settings.facebook_pixel_access_token) {
+      console.log('[Facebook] Pixel configured:', settings.facebook_pixel);
+      try {
+        // Build user data for matching
+        const userData = {};
+        
+        // Try to find email in submitted data
+        const emailField = Object.entries(data).find(([key]) => 
+          key.toLowerCase().includes('email')
+        );
+        if (emailField) {
+          // Hash email (Facebook requires SHA256, but we'll send unhashed and let FB hash it)
+          userData.em = [String(emailField[1]).toLowerCase().trim()];
+        }
+        
+        // Try to find phone in submitted data
+        const phoneField = Object.entries(data).find(([key]) => 
+          key.toLowerCase().includes('phone') || 
+          key.toLowerCase().includes('whatsapp') || 
+          key.toLowerCase().includes('telefone') ||
+          key.toLowerCase().includes('celular')
+        );
+        if (phoneField) {
+          // Clean phone number
+          const cleanPhone = String(phoneField[1]).replace(/\D/g, '');
+          userData.ph = [cleanPhone];
+        }
+        
+        // Try to find name in submitted data
+        const nameField = Object.entries(data).find(([key]) => 
+          key.toLowerCase().includes('nome') || 
+          key.toLowerCase().includes('name')
+        );
+        if (nameField) {
+          const nameParts = String(nameField[1]).trim().split(' ');
+          if (nameParts[0]) userData.fn = [nameParts[0].toLowerCase()];
+          if (nameParts.length > 1) userData.ln = [nameParts[nameParts.length - 1].toLowerCase()];
+        }
+        
+        // Add client info
+        userData.client_ip_address = ipAddress;
+        userData.client_user_agent = userAgent;
+        
+        const eventData = {
+          data: [{
+            event_name: 'Lead',
+            event_time: Math.floor(Date.now() / 1000),
+            action_source: 'website',
+            event_source_url: `${req.headers.origin || req.headers.referer || ''}/f/${slug}`,
+            user_data: userData,
+            custom_data: {
+              form_name: form.name,
+              form_slug: form.slug,
+              lead_id: lead.id,
+            },
+          }],
+        };
+        
+        // Add test_event_code if configured (for testing)
+        if (settings.facebook_pixel_test_code) {
+          eventData.test_event_code = settings.facebook_pixel_test_code;
+        }
+        
+        const fbApiUrl = `https://graph.facebook.com/v18.0/${settings.facebook_pixel}/events?access_token=${settings.facebook_pixel_access_token}`;
+        
+        console.log('[Facebook] Sending Lead event...');
+        const fbResponse = await fetch(fbApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+        
+        const fbData = await fbResponse.json();
+        console.log('[Facebook] Response:', fbResponse.status, fbData);
+        
+        if (!fbResponse.ok) {
+          console.error('[Facebook] Error:', fbData.error || fbData);
+        }
+      } catch (fbError) {
+        console.error('[Facebook] Conversions API error:', fbError.message);
+      }
+    } else {
+      if (settings.facebook_pixel) {
+        console.log('[Facebook] Pixel configured but missing access token');
+      }
+    }
+
+    // Send Google Analytics event if configured
+    // Note: GA4 Measurement Protocol would go here if needed
+
     res.status(201).json({
       success: true,
       message: settings.success_message || 'Lead criado com sucesso',
