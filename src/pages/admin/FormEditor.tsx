@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +52,7 @@ import { toast } from '@/hooks/use-toast';
 import type { Form, FormField, FormSettings } from '@/types';
 import LogoUploader from '@/components/forms/LogoUploader';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
-import FieldEditor from '@/components/forms/FieldEditor';
+import SortableFieldEditor from '@/components/forms/SortableFieldEditor';
 
 const FormEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +64,18 @@ const FormEditor: React.FC = () => {
 
   const [localForm, setLocalForm] = useState<Partial<Form> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Mock form for demo
   const mockForm: Form = {
@@ -123,6 +150,24 @@ const FormEditor: React.FC = () => {
       'fields',
       (localForm?.fields || []).filter((f) => f.id !== fieldId)
     );
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const fields = localForm?.fields || [];
+      const oldIndex = fields.findIndex((f) => f.id === active.id);
+      const newIndex = fields.findIndex((f) => f.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reorderedFields = arrayMove(fields, oldIndex, newIndex).map((field, index) => ({
+          ...field,
+          order: index,
+        }));
+        handleChange('fields', reorderedFields);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -228,14 +273,25 @@ const FormEditor: React.FC = () => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(localForm.fields || []).map((field) => (
-                  <FieldEditor
-                    key={field.id}
-                    field={field}
-                    onUpdate={(updates) => handleUpdateField(field.id, updates)}
-                    onRemove={() => handleRemoveField(field.id)}
-                  />
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={(localForm.fields || []).map(f => f.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {(localForm.fields || []).map((field) => (
+                      <SortableFieldEditor
+                        key={field.id}
+                        field={field}
+                        onUpdate={(updates) => handleUpdateField(field.id, updates)}
+                        onRemove={() => handleRemoveField(field.id)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
                 {(localForm.fields || []).length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">
