@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,8 +46,12 @@ const navigation = [
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { data: systemSettings } = useSystemSettings();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const systemName = systemSettings?.system_name || 'R2D2';
+  const systemLogo = systemSettings?.system_logo_url;
 
   const handleLogout = () => {
     logout();
@@ -74,10 +79,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           {/* Logo */}
           <div className="flex h-16 items-center justify-between border-b px-4">
             <Link to="/admin" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <FileText className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold">FormBuilder</span>
+              {systemLogo ? (
+                <img src={systemLogo} alt={systemName} className="h-8 w-auto object-contain" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <FileText className="h-4 w-4 text-primary-foreground" />
+                </div>
+              )}
+              <span className="text-lg font-bold">{systemName}</span>
             </Link>
             <Button
               variant="ghost"
@@ -160,7 +169,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="text-lg font-bold">FormBuilder</span>
+          <span className="text-lg font-bold">{systemName}</span>
         </header>
 
         {/* Page content */}
@@ -168,7 +177,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Footer */}
         <footer className="border-t bg-card px-4 py-3 text-center text-sm text-muted-foreground">
-          TNS - R2D2
+          R2D2 - TNS
         </footer>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +15,12 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
+  const { data: systemSettings } = useSystemSettings();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const systemName = systemSettings?.system_name || 'R2D2';
+  const systemLogo = systemSettings?.system_logo_url || logoFormBuilder;
 
   const from = location.state?.from?.pathname || '/admin';
 
@@ -70,12 +75,12 @@ const Login: React.FC = () => {
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
           <img 
-            src={logoFormBuilder} 
-            alt="FormBuilder Logo" 
+            src={systemLogo} 
+            alt={systemName} 
             className="w-48 h-48 object-contain mb-8 drop-shadow-2xl"
           />
           <h1 className="text-4xl font-bold mb-4 text-center drop-shadow-lg">
-            FormBuilder
+            {systemName}
           </h1>
           <p className="text-xl text-white/90 text-center max-w-md">
             Crie formulários incríveis e capture leads de forma inteligente
@@ -105,12 +110,12 @@ const Login: React.FC = () => {
           {/* Mobile logo */}
           <div className="lg:hidden flex flex-col items-center mb-8">
             <img 
-              src={logoFormBuilder} 
-              alt="FormBuilder Logo" 
+              src={systemLogo} 
+              alt={systemName} 
               className="w-24 h-24 object-contain mb-4"
             />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-              FormBuilder
+              {systemName}
             </h1>
           </div>
 
@@ -181,7 +186,7 @@ const Login: React.FC = () => {
 
           {/* Footer */}
           <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-            © {new Date().getFullYear()} FormBuilder. Todos os direitos reservados.
+            R2D2 - TNS
           </p>
         </div>
       </div>
