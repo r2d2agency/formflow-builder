@@ -3,6 +3,9 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Helper to normalize API URL (remove trailing slash)
+const normalizeUrl = (url) => url ? url.replace(/\/+$/, '') : '';
+
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
@@ -121,7 +124,8 @@ router.post('/:id/test', async (req, res) => {
 
     // Test connection to Evolution API
     try {
-      const response = await fetch(`${instance.api_url}/instance/fetchInstances`, {
+      const apiUrl = normalizeUrl(instance.api_url);
+      const response = await fetch(`${apiUrl}/instance/fetchInstances`, {
         headers: {
           'apikey': instance.api_key,
         },
@@ -166,7 +170,8 @@ router.post('/:id/send-test', async (req, res) => {
     const cleanPhone = phone.replace(/\D/g, '');
 
     try {
-      const response = await fetch(`${instance.api_url}/message/sendText/${instance.name}`, {
+      const apiUrl = normalizeUrl(instance.api_url);
+      const response = await fetch(`${apiUrl}/message/sendText/${instance.name}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
