@@ -579,6 +579,62 @@ const FormEditor: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* RD Station Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  RD Station
+                </CardTitle>
+                <CardDescription>
+                  Envie leads automaticamente para o RD Station Marketing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Integração RD Station</p>
+                    <p className="text-sm text-muted-foreground">
+                      Enviar leads para o RD Station via API de Conversões
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localForm.settings?.rdstation_enabled}
+                    onCheckedChange={(v) => handleSettingsChange('rdstation_enabled', v)}
+                  />
+                </div>
+                {localForm.settings?.rdstation_enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="rdstation_api_token">Token da API</Label>
+                      <Input
+                        id="rdstation_api_token"
+                        type="password"
+                        value={localForm.settings?.rdstation_api_token || ''}
+                        onChange={(e) => handleSettingsChange('rdstation_api_token', e.target.value)}
+                        placeholder="seu-token-api-rdstation"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Token de integração gerado em RD Station → Integrações → Tokens
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rdstation_conversion_identifier">Identificador de Conversão</Label>
+                      <Input
+                        id="rdstation_conversion_identifier"
+                        value={localForm.settings?.rdstation_conversion_identifier || ''}
+                        onChange={(e) => handleSettingsChange('rdstation_conversion_identifier', e.target.value)}
+                        placeholder="formulario-site-principal"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Identificador único para esta conversão (usado para criar automações no RD)
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Webhook</CardTitle>
