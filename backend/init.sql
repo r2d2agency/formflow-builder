@@ -37,7 +37,9 @@ CREATE TABLE IF NOT EXISTS leads (
     source VARCHAR(100),
     ip_address VARCHAR(45),
     user_agent TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    is_partial BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Evolution instances table
@@ -111,6 +113,7 @@ CREATE TABLE IF NOT EXISTS link_clicks (
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_leads_form_id ON leads(form_id);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leads_is_partial ON leads(is_partial);
 CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
 CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);

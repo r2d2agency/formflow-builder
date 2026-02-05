@@ -130,7 +130,9 @@ export interface Lead {
   source?: string;
   ip_address?: string;
   user_agent?: string;
+  is_partial?: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 // Evolution API Types
