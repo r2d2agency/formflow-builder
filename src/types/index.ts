@@ -80,6 +80,11 @@ export interface FormSettings {
   // Google
   google_analytics?: string;
   google_tag_manager?: string;
+  // RD Station
+  rdstation_enabled?: boolean;
+  rdstation_api_token?: string;
+  rdstation_conversion_identifier?: string;
+  // Webhook
   webhook_url?: string;
   webhook_enabled: boolean;
   whatsapp_notification: boolean;
