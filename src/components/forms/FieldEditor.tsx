@@ -31,7 +31,7 @@ interface FieldEditorProps {
   field: FormField;
   onUpdate: (updates: Partial<FormField>) => void;
   onRemove: () => void;
-  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement> & { style?: React.CSSProperties };
 }
 
 const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dragHandleProps }) => {
@@ -89,8 +89,9 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dr
   return (
     <div className="flex items-start gap-4 rounded-lg border p-4 bg-background">
       <div 
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors touch-none"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors select-none"
         {...dragHandleProps}
+        style={{ touchAction: 'none', ...dragHandleProps?.style }}
       >
         <GripVertical className="h-5 w-5" />
       </div>

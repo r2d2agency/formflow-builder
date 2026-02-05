@@ -24,11 +24,19 @@ const SortableFieldEditor: React.FC<SortableFieldEditorProps> = ({
     isDragging,
   } = useSortable({ id: field.id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1000 : 'auto',
+    position: 'relative' as const,
+  };
+
+  // Combine attributes and listeners but ensure touch-action is set
+  const dragHandleProps = {
+    ...attributes,
+    ...listeners,
+    style: { touchAction: 'none' } as React.CSSProperties,
   };
 
   return (
@@ -37,7 +45,7 @@ const SortableFieldEditor: React.FC<SortableFieldEditorProps> = ({
         field={field}
         onUpdate={onUpdate}
         onRemove={onRemove}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        dragHandleProps={dragHandleProps}
       />
     </div>
   );

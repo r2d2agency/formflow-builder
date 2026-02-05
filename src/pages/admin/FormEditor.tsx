@@ -65,11 +65,11 @@ const FormEditor: React.FC = () => {
   const [localForm, setLocalForm] = useState<Partial<Form> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Sensors for drag and drop
+  // Sensors for drag and drop - use lower distance for better responsiveness
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
