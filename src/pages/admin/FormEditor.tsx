@@ -848,6 +848,44 @@ const FormEditor: React.FC = () => {
                     placeholder="GTM-XXXXXXX"
                   />
                 </div>
+
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    Código Personalizado (Verificação de Domínio)
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Adicione códigos de verificação de domínio (Meta, Google, etc.) ou scripts personalizados.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom_head_code">Código no &lt;head&gt;</Label>
+                  <Textarea
+                    id="custom_head_code"
+                    value={localForm.settings?.custom_head_code || ''}
+                    onChange={(e) => handleSettingsChange('custom_head_code', e.target.value)}
+                    placeholder={'<meta name="facebook-domain-verification" content="xxxxxxxx" />'}
+                    rows={4}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Meta tags, verificações de domínio (Meta Pixel, etc.)
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom_body_code">Código no &lt;body&gt;</Label>
+                  <Textarea
+                    id="custom_body_code"
+                    value={localForm.settings?.custom_body_code || ''}
+                    onChange={(e) => handleSettingsChange('custom_body_code', e.target.value)}
+                    placeholder={'<script>...</script>'}
+                    rows={4}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Scripts que precisam ser carregados no body
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

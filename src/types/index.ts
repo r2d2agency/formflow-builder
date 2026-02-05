@@ -105,6 +105,9 @@ export interface FormSettings {
   whatsapp_float_enabled?: boolean;
   whatsapp_float_number?: string;
   whatsapp_float_message?: string;
+  // Custom code injection for domain verification (Meta, Google, etc.)
+  custom_head_code?: string;
+  custom_body_code?: string;
 }
 
 export interface Form {
