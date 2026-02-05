@@ -31,9 +31,10 @@ interface FieldEditorProps {
   field: FormField;
   onUpdate: (updates: Partial<FormField>) => void;
   onRemove: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
-const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove }) => {
+const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dragHandleProps }) => {
   const fieldTypeConfig = fieldTypes.find(t => t.value === field.type);
   const hasOptions = fieldTypeConfig?.hasOptions || false;
   const hasPlaceholder = fieldTypeConfig?.hasPlaceholder !== false;
@@ -86,8 +87,11 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove }) 
   };
 
   return (
-    <div className="flex items-start gap-4 rounded-lg border p-4">
-      <div className="cursor-move text-muted-foreground">
+    <div className="flex items-start gap-4 rounded-lg border p-4 bg-background">
+      <div 
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors touch-none"
+        {...dragHandleProps}
+      >
         <GripVertical className="h-5 w-5" />
       </div>
       
