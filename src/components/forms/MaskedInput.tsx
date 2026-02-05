@@ -6,6 +6,7 @@ interface MaskedInputProps extends Omit<React.ComponentProps<'input'>, 'onChange
   mask: 'phone' | 'whatsapp' | 'email' | 'none';
   value: string;
   onChange: (value: string) => void;
+  style?: React.CSSProperties;
 }
 
 // Phone mask: (00) 00000-0000
@@ -51,6 +52,7 @@ const MaskedInput: React.FC<MaskedInputProps> = ({
   onChange,
   className,
   placeholder,
+  style,
   ...props
 }) => {
   const [displayValue, setDisplayValue] = useState('');
@@ -127,6 +129,7 @@ const MaskedInput: React.FC<MaskedInputProps> = ({
       onFocus={handleFocus}
       placeholder={getPlaceholder()}
       className={cn(className)}
+      style={style}
     />
   );
 };

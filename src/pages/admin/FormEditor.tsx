@@ -422,6 +422,44 @@ const FormEditor: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="input_border_color">Cor da Borda do Input</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="input_border_color"
+                        value={localForm.settings?.input_border_color || '#94a3b8'}
+                        onChange={(e) => handleSettingsChange('input_border_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.input_border_color || '#94a3b8'}
+                        onChange={(e) => handleSettingsChange('input_border_color', e.target.value)}
+                        placeholder="#94a3b8"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="placeholder_color">Cor do Placeholder</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        id="placeholder_color"
+                        value={localForm.settings?.placeholder_color || '#9ca3af'}
+                        onChange={(e) => handleSettingsChange('placeholder_color', e.target.value)}
+                        className="h-10 w-14 cursor-pointer rounded border"
+                      />
+                      <Input
+                        value={localForm.settings?.placeholder_color || '#9ca3af'}
+                        onChange={(e) => handleSettingsChange('placeholder_color', e.target.value)}
+                        placeholder="#9ca3af"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
                 {/* Preview */}
                 <div 
                   className="rounded-lg border p-4"
@@ -437,9 +475,20 @@ const FormEditor: React.FC = () => {
                   <p className="mb-2 text-sm font-medium" style={{ color: localForm.settings?.text_color || '#1e293b' }}>
                     Preview do Formulário
                   </p>
-                  <p className="mb-3 text-sm" style={{ color: localForm.settings?.text_color || '#1e293b' }}>
-                    Veja como ficará o formulário com as cores selecionadas.
-                  </p>
+                  <div className="mb-3">
+                    <input 
+                      type="text"
+                      className="w-full border-0 border-b-2 bg-transparent py-2 text-sm outline-none"
+                      style={{ 
+                        borderColor: localForm.settings?.input_border_color || '#94a3b8',
+                        color: localForm.settings?.text_color || '#1e293b',
+                      }}
+                      placeholder="Exemplo de input..."
+                    />
+                    <style>{`
+                      input::placeholder { color: ${localForm.settings?.placeholder_color || '#9ca3af'} !important; }
+                    `}</style>
+                  </div>
                   <button
                     className="rounded-lg px-4 py-2 text-sm font-medium"
                     style={{ 
