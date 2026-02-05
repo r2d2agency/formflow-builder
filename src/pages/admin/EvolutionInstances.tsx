@@ -78,21 +78,8 @@ const EvolutionInstances: React.FC = () => {
   const testInstance = useTestEvolutionInstance();
   const sendTestMessage = useSendTestMessage();
 
-  // Mock data for demo
-  const mockInstances: EvolutionInstance[] = [
-    {
-      id: '1',
-      name: 'Instância Principal',
-      api_url: 'https://evolution.meusite.com',
-      api_key: '••••••••',
-      default_number: '5511999998888',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ];
-
-  const displayInstances = error ? mockInstances : (instances ?? []);
+  const displayInstances = instances ?? [];
+  const loadErrorMessage = error instanceof Error ? error.message : (error ? 'Erro ao carregar instâncias.' : null);
 
   const handleOpenDialog = (instance?: EvolutionInstance) => {
     if (instance) {
@@ -197,6 +184,20 @@ const EvolutionInstances: React.FC = () => {
           </CardContent>
         </Card>
 
+        {loadErrorMessage && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="py-4">
+              <p className="font-medium text-destructive">Erro ao carregar instâncias</p>
+              <p className="text-sm text-muted-foreground">{loadErrorMessage}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Se você estiver testando fora do painel (ex.: Insomnia/Postman), envie o header{' '}
+                <code>Authorization: Bearer SEU_TOKEN</code>.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Instances Table */}
         {/* Instances Table */}
         <Card>
           <CardHeader>
