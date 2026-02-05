@@ -29,12 +29,16 @@ const useCustomStyles = (form: Form | undefined) => {
   const backgroundColor = form?.settings?.background_color || '#f8fafc';
   const textColor = form?.settings?.text_color || '#1e293b';
   const buttonTextColor = form?.settings?.button_text_color || '#ffffff';
+  const inputBorderColor = form?.settings?.input_border_color || '#94a3b8';
+  const placeholderColor = form?.settings?.placeholder_color || '#9ca3af';
 
   return {
     '--form-primary': primaryColor,
     '--form-bg': backgroundColor,
     '--form-text': textColor,
     '--form-button-text': buttonTextColor,
+    '--form-input-border': inputBorderColor,
+    '--form-placeholder': placeholderColor,
   } as React.CSSProperties;
 };
 
@@ -106,7 +110,14 @@ const TypeformRenderer: React.FC<{
     if (!currentField) return null;
 
     // Style: only bottom border (underline style like Typeform) - no focus outline/ring
-    const baseInputClass = "h-14 text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-current focus:border-current placeholder:opacity-50 transition-colors";
+    // Uses CSS variables for border and placeholder colors
+    const inputStyle = {
+      borderColor: 'var(--form-input-border)',
+      color: 'var(--form-text)',
+      '--tw-placeholder-opacity': '1',
+    } as React.CSSProperties;
+    
+    const baseInputClass = "h-14 text-xl border-0 border-b-2 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors [&::placeholder]:text-[var(--form-placeholder)]";
 
     switch (currentField.type) {
       case 'textarea':
@@ -116,7 +127,8 @@ const TypeformRenderer: React.FC<{
             value={typeof currentValue === 'string' ? currentValue : ''}
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] text-xl border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-current focus:border-current placeholder:opacity-50 resize-none transition-colors"
+            className="min-h-[100px] text-xl border-0 border-b-2 rounded-none bg-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none transition-colors [&::placeholder]:text-[var(--form-placeholder)]"
+            style={inputStyle}
             autoFocus
           />
         );
@@ -128,6 +140,7 @@ const TypeformRenderer: React.FC<{
             onChange={(val) => setCurrentValue(val)}
             onKeyDown={handleKeyDown}
             className={baseInputClass}
+            style={inputStyle}
             autoFocus
           />
         );
@@ -139,6 +152,7 @@ const TypeformRenderer: React.FC<{
             onChange={(val) => setCurrentValue(val)}
             onKeyDown={handleKeyDown}
             className={baseInputClass}
+            style={inputStyle}
             autoFocus
           />
         );
@@ -150,6 +164,7 @@ const TypeformRenderer: React.FC<{
             onChange={(val) => setCurrentValue(val)}
             onKeyDown={handleKeyDown}
             className={baseInputClass}
+            style={inputStyle}
             autoFocus
           />
         );
@@ -160,17 +175,19 @@ const TypeformRenderer: React.FC<{
             onValueChange={(val) => setCurrentValue(val)}
           >
             <SelectTrigger 
-              className="h-14 text-lg border-0 border-b-2 border-current/40 rounded-none bg-transparent focus:ring-0"
-              style={{ color: 'var(--form-text)', borderColor: 'currentColor' }}
+              className="h-14 text-lg border-0 border-b-2 rounded-none bg-transparent focus:ring-0"
+              style={{ color: 'var(--form-text)', borderColor: 'var(--form-input-border)' }}
             >
-              <SelectValue placeholder="Selecione uma opção" />
+              <SelectValue 
+                placeholder="Selecione uma opção" 
+              />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border shadow-lg z-50">
+            <SelectContent className="bg-background border shadow-lg z-50">
               {(currentField.options || []).map((option, i) => (
                 <SelectItem 
                   key={i} 
                   value={option}
-                  className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="text-foreground hover:bg-accent"
                 >
                   {option}
                 </SelectItem>

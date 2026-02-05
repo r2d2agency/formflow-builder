@@ -92,10 +92,13 @@ export interface FormSettings {
   whatsapp_target_number?: string;
   success_message?: string;
   button_text?: string;
+  // Colors - more precise control
   primary_color?: string;
   background_color?: string;
   text_color?: string;
   button_text_color?: string;
+  input_border_color?: string;
+  placeholder_color?: string;
   logo_url?: string;
   whatsapp_message?: WhatsAppMessage;
   // Floating WhatsApp button
