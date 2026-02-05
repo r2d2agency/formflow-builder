@@ -70,17 +70,32 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Build version - update this when deploying
+const BUILD_VERSION = '2.1.0';
+const BUILD_DATE = '2025-02-05T12:00:00Z';
+
 // Health check
 app.get('/health', async (req, res) => {
   // Optional deep check: /health?db=1
   const checkDb = req.query.db === '1';
   if (!checkDb) {
-    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    return res.json({ 
+      status: 'ok', 
+      version: BUILD_VERSION,
+      build_date: BUILD_DATE,
+      timestamp: new Date().toISOString() 
+    });
   }
 
   try {
     await pool.query('SELECT 1');
-    return res.json({ status: 'ok', db: 'ok', timestamp: new Date().toISOString() });
+    return res.json({ 
+      status: 'ok', 
+      db: 'ok', 
+      version: BUILD_VERSION,
+      build_date: BUILD_DATE,
+      timestamp: new Date().toISOString() 
+    });
   } catch (err) {
     console.error('[health] DB check failed:', {
       message: err?.message,
@@ -89,7 +104,8 @@ app.get('/health', async (req, res) => {
     return res.status(500).json({
       status: 'error',
       db: 'error',
-      // do not expose secrets, but expose enough to debug env misconfig
+      version: BUILD_VERSION,
+      build_date: BUILD_DATE,
       error: {
         code: err?.code,
         message: err?.message,
