@@ -46,9 +46,39 @@ class ApiService {
         },
       });
 
+      const contentType = response.headers.get('content-type') || '';
+
+      // Some proxies (or misconfigured routes) return HTML error pages.
+      // Trying to parse that as JSON causes: Unexpected token '<'
+      if (!contentType.includes('application/json')) {
+        const text = await response.text().catch(() => '');
+
+        if (!response.ok) {
+          const isHtml = text.trim().startsWith('<') || text.toLowerCase().includes('<html');
+          const preview = text ? text.slice(0, 200) : '';
+
+          return {
+            success: false,
+            error: isHtml
+              ? `API retornou HTML (provável 404/redirect). Status: ${response.status}. Verifique o VITE_API_URL e o roteamento do backend.`
+              : preview || `Resposta inesperada do servidor. Status: ${response.status}`,
+          };
+        }
+
+        return {
+          success: false,
+          error: `Resposta inesperada do servidor (${contentType || 'sem content-type'}).`,
+        };
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
+        // If token is missing/expired, clear it so the app can redirect to /login.
+        if (response.status === 401) {
+          this.setToken(null);
+        }
+
         return {
           success: false,
           error: data.error || data.message || 'An error occurred',
