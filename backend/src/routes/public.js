@@ -2,6 +2,78 @@ const express = require('express');
 
 const router = express.Router();
 
+// POST /api/public/forms/:slug/partial - Save partial lead data progressively
+router.post('/forms/:slug/partial', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { slug } = req.params;
+    const { data, partial_lead_id } = req.body;
+
+    // Get form by slug
+    const formResult = await pool.query(
+      'SELECT * FROM forms WHERE slug = $1 AND is_active = true',
+      [slug]
+    );
+
+    if (formResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Formulário não encontrado' });
+    }
+
+    const form = formResult.rows[0];
+
+    // Get IP and User Agent
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const source = req.query.source || 'organic';
+
+    let lead;
+
+    if (partial_lead_id) {
+      // Update existing partial lead
+      const updateResult = await pool.query(
+        `UPDATE leads 
+         SET data = $1, updated_at = NOW()
+         WHERE id = $2 AND form_id = $3 AND is_partial = true
+         RETURNING *`,
+        [JSON.stringify(data), partial_lead_id, form.id]
+      );
+
+      if (updateResult.rows.length > 0) {
+        lead = updateResult.rows[0];
+        console.log('[PartialLead] Updated:', lead.id);
+      } else {
+        // Lead not found or already completed, create new
+        const insertResult = await pool.query(
+          `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
+           VALUES ($1, $2, $3, $4, $5, true)
+           RETURNING *`,
+          [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+        );
+        lead = insertResult.rows[0];
+        console.log('[PartialLead] Created new (old not found):', lead.id);
+      }
+    } else {
+      // Create new partial lead
+      const insertResult = await pool.query(
+        `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
+         VALUES ($1, $2, $3, $4, $5, true)
+         RETURNING *`,
+        [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+      );
+      lead = insertResult.rows[0];
+      console.log('[PartialLead] Created:', lead.id);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { lead_id: lead.id },
+    });
+  } catch (error) {
+    console.error('Partial lead error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao salvar dados parciais' });
+  }
+});
+
 // POST /api/public/forms/:slug/submit
 router.post('/forms/:slug/submit', async (req, res) => {
   try {
@@ -26,15 +98,43 @@ router.post('/forms/:slug/submit', async (req, res) => {
     const userAgent = req.headers['user-agent'];
     const source = req.query.source || 'organic';
 
-    // Create lead
-    const leadResult = await pool.query(
-      `INSERT INTO leads (form_id, data, source, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [form.id, JSON.stringify(data), source, ipAddress, userAgent]
-    );
+    // Check if we have a partial lead to complete
+    const partialLeadId = req.body.partial_lead_id;
+    let lead;
 
-    const lead = leadResult.rows[0];
+    if (partialLeadId) {
+      // Complete the partial lead
+      const updateResult = await pool.query(
+        `UPDATE leads 
+         SET data = $1, is_partial = false, updated_at = NOW()
+         WHERE id = $2 AND form_id = $3
+         RETURNING *`,
+        [JSON.stringify(data), partialLeadId, form.id]
+      );
+      
+      if (updateResult.rows.length > 0) {
+        lead = updateResult.rows[0];
+        console.log('[Lead] Completed partial lead:', lead.id);
+      } else {
+        // Partial lead not found, create new
+        const insertResult = await pool.query(
+          `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
+           VALUES ($1, $2, $3, $4, $5, false)
+           RETURNING *`,
+          [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+        );
+        lead = insertResult.rows[0];
+      }
+    } else {
+      // Create new complete lead
+      const leadResult = await pool.query(
+        `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
+         VALUES ($1, $2, $3, $4, $5, false)
+         RETURNING *`,
+        [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+      );
+      lead = leadResult.rows[0];
+    }
     const settings = form.settings || {};
 
     // Send webhook if enabled

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-interface MaskedInputProps extends Omit<React.ComponentProps<'input'>, 'onChange'> {
+interface MaskedInputProps extends Omit<React.ComponentProps<'input'>, 'onChange' | 'onBlur'> {
   mask: 'phone' | 'whatsapp' | 'email' | 'none';
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   style?: React.CSSProperties;
 }
 
@@ -50,6 +51,7 @@ const MaskedInput: React.FC<MaskedInputProps> = ({
   mask,
   value,
   onChange,
+  onBlur,
   className,
   placeholder,
   style,
@@ -127,6 +129,7 @@ const MaskedInput: React.FC<MaskedInputProps> = ({
       value={displayValue}
       onChange={handleChange}
       onFocus={handleFocus}
+      onBlur={onBlur}
       placeholder={getPlaceholder()}
       className={cn(className)}
       style={style}

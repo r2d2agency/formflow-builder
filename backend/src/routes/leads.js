@@ -13,14 +13,21 @@ router.get('/', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+    const showPartial = req.query.show_partial === 'true';
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM leads');
+    // Filter by partial status
+    const whereClause = showPartial ? '' : 'WHERE (l.is_partial IS NULL OR l.is_partial = false)';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM leads l ${whereClause}`
+    );
     const total = parseInt(countResult.rows[0].count);
 
     const result = await pool.query(
       `SELECT l.*, f.name as form_name, f.slug as form_slug
        FROM leads l
        JOIN forms f ON l.form_id = f.id
+       ${whereClause}
        ORDER BY l.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset]
@@ -49,9 +56,13 @@ router.get('/form/:formId', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+    const showPartial = req.query.show_partial === 'true';
+
+    // Filter by partial status
+    const partialFilter = showPartial ? '' : 'AND (l.is_partial IS NULL OR l.is_partial = false)';
 
     const countResult = await pool.query(
-      'SELECT COUNT(*) FROM leads WHERE form_id = $1',
+      `SELECT COUNT(*) FROM leads l WHERE form_id = $1 ${partialFilter}`,
       [req.params.formId]
     );
     const total = parseInt(countResult.rows[0].count);
@@ -60,7 +71,7 @@ router.get('/form/:formId', async (req, res) => {
       `SELECT l.*, f.name as form_name
        FROM leads l
        JOIN forms f ON l.form_id = f.id
-       WHERE l.form_id = $1
+       WHERE l.form_id = $1 ${partialFilter}
        ORDER BY l.created_at DESC
        LIMIT $2 OFFSET $3`,
       [req.params.formId, limit, offset]

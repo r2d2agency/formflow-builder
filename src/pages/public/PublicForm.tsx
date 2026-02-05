@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFormBySlug } from '@/hooks/useForms';
+import { usePartialLead } from '@/hooks/usePartialLead';
 import apiService from '@/services/api';
 import { API_CONFIG } from '@/config/api';
 import { toast } from '@/hooks/use-toast';
@@ -45,10 +46,11 @@ const useCustomStyles = (form: Form | undefined) => {
 // Typeform style - one question at a time with slide animation
 const TypeformRenderer: React.FC<{
   form: Form;
-  onSubmit: (data: Record<string, any>) => Promise<void>;
+  onSubmit: (data: Record<string, any>, partialLeadId?: string | null) => Promise<void>;
   isSubmitting: boolean;
   isEmbed?: boolean;
-}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
+  onFieldComplete?: (fieldLabel: string, value: any) => void;
+}> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentValue, setCurrentValue] = useState<string | string[]>('');
@@ -71,10 +73,16 @@ const TypeformRenderer: React.FC<{
         return;
       }
       
-      setAnswers((prev) => ({ ...prev, [currentField.label]: currentValue }));
+      const newAnswers = { ...answers, [currentField.label]: currentValue };
+      setAnswers(newAnswers);
+      
+      // Save partial data when moving to next field
+      if (onFieldComplete && currentValue.toString().trim()) {
+        onFieldComplete(currentField.label, currentValue);
+      }
       
       if (isLastField) {
-        onSubmit({ ...answers, [currentField.label]: currentValue });
+        onSubmit(newAnswers);
       } else {
         setSlideDirection('left');
         setIsAnimating(true);
@@ -394,10 +402,11 @@ const TypeformRenderer: React.FC<{
 // Chat style renderer
 const ChatRenderer: React.FC<{
   form: Form;
-  onSubmit: (data: Record<string, any>) => Promise<void>;
+  onSubmit: (data: Record<string, any>, partialLeadId?: string | null) => Promise<void>;
   isSubmitting: boolean;
   isEmbed?: boolean;
-}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
+  onFieldComplete?: (fieldLabel: string, value: any) => void;
+}> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
   const [messages, setMessages] = useState<{ type: 'bot' | 'user'; text: string }[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
@@ -429,6 +438,12 @@ const ChatRenderer: React.FC<{
     setMessages((prev) => [...prev, { type: 'user', text: inputValue }]);
     const newAnswers = { ...answers, [currentField.label]: inputValue };
     setAnswers(newAnswers);
+    
+    // Save partial data
+    if (onFieldComplete && inputValue.trim()) {
+      onFieldComplete(currentField.label, inputValue);
+    }
+    
     setInputValue('');
 
     if (currentIndex < fields.length - 1) {
@@ -537,15 +552,23 @@ const ChatRenderer: React.FC<{
 // Standard form renderer - CENTRALIZED
 const StandardRenderer: React.FC<{
   form: Form;
-  onSubmit: (data: Record<string, any>) => Promise<void>;
+  onSubmit: (data: Record<string, any>, partialLeadId?: string | null) => Promise<void>;
   isSubmitting: boolean;
   isEmbed?: boolean;
-}> = ({ form, onSubmit, isSubmitting, isEmbed }) => {
+  onFieldComplete?: (fieldLabel: string, value: any) => void;
+}> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const customStyles = useCustomStyles(form);
 
   const handleChange = (label: string, value: any) => {
     setFormData((prev) => ({ ...prev, [label]: value }));
+  };
+
+  const handleBlur = (label: string, value: any) => {
+    // Save partial data when field loses focus
+    if (onFieldComplete && value && value.toString().trim()) {
+      onFieldComplete(label, value);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -575,6 +598,7 @@ const StandardRenderer: React.FC<{
           <Textarea
             value={value}
             onChange={(e) => handleChange(field.label, e.target.value)}
+            onBlur={(e) => handleBlur(field.label, e.target.value)}
             placeholder={field.placeholder}
             required={field.required}
             disabled={isSubmitting}
@@ -587,6 +611,7 @@ const StandardRenderer: React.FC<{
             mask="whatsapp"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
+            onBlur={() => handleBlur(field.label, value)}
             disabled={isSubmitting}
           />
         );
@@ -596,6 +621,7 @@ const StandardRenderer: React.FC<{
             mask="phone"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
+            onBlur={() => handleBlur(field.label, value)}
             disabled={isSubmitting}
           />
         );
@@ -605,12 +631,19 @@ const StandardRenderer: React.FC<{
             mask="email"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
+            onBlur={() => handleBlur(field.label, value)}
             disabled={isSubmitting}
           />
         );
       case 'select':
         return (
-          <Select value={value} onValueChange={(val) => handleChange(field.label, val)}>
+          <Select 
+            value={value} 
+            onValueChange={(val) => {
+              handleChange(field.label, val);
+              handleBlur(field.label, val);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
@@ -623,7 +656,14 @@ const StandardRenderer: React.FC<{
         );
       case 'radio':
         return (
-          <RadioGroup value={value} onValueChange={(val) => handleChange(field.label, val)} className="space-y-2">
+          <RadioGroup 
+            value={value} 
+            onValueChange={(val) => {
+              handleChange(field.label, val);
+              handleBlur(field.label, val);
+            }} 
+            className="space-y-2"
+          >
             {(field.options || []).map((option, i) => (
               <label
                 key={i}
@@ -647,11 +687,11 @@ const StandardRenderer: React.FC<{
                 <Checkbox
                   checked={selectedValues.includes(option)}
                   onCheckedChange={(checked) => {
-                    if (checked) {
-                      handleChange(field.label, [...selectedValues, option]);
-                    } else {
-                      handleChange(field.label, selectedValues.filter((v: string) => v !== option));
-                    }
+                    const newValues = checked 
+                      ? [...selectedValues, option]
+                      : selectedValues.filter((v: string) => v !== option);
+                    handleChange(field.label, newValues);
+                    handleBlur(field.label, newValues);
                   }}
                   disabled={isSubmitting}
                 />
@@ -665,6 +705,7 @@ const StandardRenderer: React.FC<{
           <Input
             value={value}
             onChange={(e) => handleChange(field.label, e.target.value)}
+            onBlur={(e) => handleBlur(field.label, e.target.value)}
             placeholder={field.placeholder}
             required={field.required}
             disabled={isSubmitting}
@@ -785,6 +826,9 @@ const PublicForm: React.FC = () => {
   const { data: form, isLoading, error } = useFormBySlug(slug || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Partial lead saving
+  const { savePartialData, getPartialLeadId } = usePartialLead(slug || '');
 
   // Check if embed mode
   const isEmbed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
@@ -813,13 +857,21 @@ const PublicForm: React.FC = () => {
 
   const displayForm = error ? mockForm : form;
 
+  // Handle field completion for partial save
+  const handleFieldComplete = (fieldLabel: string, value: any) => {
+    savePartialData(fieldLabel, value);
+  };
+
   const handleSubmit = async (data: Record<string, any>) => {
     setIsSubmitting(true);
     
     try {
       const response = await apiService.post(
         API_CONFIG.ENDPOINTS.SUBMIT_FORM(slug || ''),
-        { data }
+        { 
+          data,
+          partial_lead_id: getPartialLeadId(), // Link to partial lead if exists
+        }
       );
 
       if (!response.success && !error) {
@@ -909,6 +961,7 @@ const PublicForm: React.FC = () => {
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           isEmbed={isEmbed}
+          onFieldComplete={handleFieldComplete}
         />
       );
     case 'chat':
@@ -918,6 +971,7 @@ const PublicForm: React.FC = () => {
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           isEmbed={isEmbed}
+          onFieldComplete={handleFieldComplete}
         />
       );
     case 'standard':
@@ -928,6 +982,7 @@ const PublicForm: React.FC = () => {
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           isEmbed={isEmbed}
+          onFieldComplete={handleFieldComplete}
         />
       );
   }
