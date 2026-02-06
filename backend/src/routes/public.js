@@ -325,9 +325,9 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                // Send items sequentially
                for (const [index, item] of itemsToSend.entries()) {
                    try {
-                       // Add delay between messages (start with configured delay, then 3s between items)
+                       // Add delay between messages (start with configured delay, then 5s between items)
                        // Increased delay to avoid "No sessions" error or concurrency issues
-                       const delay = index === 0 ? 2000 : 3000; 
+                       const delay = index === 0 ? 4000 : 6000; 
                        
                        let endpoint = '/message/sendText';
                        let payload = {
@@ -364,18 +364,22 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                        // Send request with Retry logic for "SessionError"
                        let attempts = 0;
                        let success = false;
-                       const maxAttempts = 2;
+                       const maxAttempts = 3;
                        
                        while (attempts < maxAttempts && !success) {
                            attempts++;
                            console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to ${cleanClientPhone} (Attempt ${attempts})`);
                            
                            try {
-                               const res = await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
+                               // Ensure credentials are clean (trim whitespace)
+                               const instanceName = instance.name.trim();
+                               const apiKey = instance.api_key.trim();
+
+                               const res = await fetch(`${effectiveUrl}${endpoint}/${instanceName}`, {
                                     method: 'POST',
                                     headers: {
                                       'Content-Type': 'application/json',
-                                      'apikey': instance.api_key,
+                                      'apikey': apiKey,
                                     },
                                     body: JSON.stringify(payload),
                                 });
@@ -395,8 +399,8 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                                                                 : String(resData.response.message).includes('SessionError'));
                                      
                                      if (isSessionError && attempts < maxAttempts) {
-                                         console.log(`[WhatsApp] SessionError detected. Retrying in 5 seconds...`);
-                                         await new Promise(resolve => setTimeout(resolve, 5000));
+                                         console.log(`[WhatsApp] SessionError detected. Retrying in 10 seconds...`);
+                                         await new Promise(resolve => setTimeout(resolve, 10000));
                                          continue;
                                      }
                                      
@@ -412,7 +416,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                         
                         // Wait a bit before next message if not last
                         if (index < itemsToSend.length - 1) {
-                            await new Promise(resolve => setTimeout(resolve, 3000));
+                            await new Promise(resolve => setTimeout(resolve, 4000));
                         }
 
                    } catch (err) {
