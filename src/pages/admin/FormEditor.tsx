@@ -634,21 +634,11 @@ const FormEditor: React.FC = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp_target_number">Número de Destino (WhatsApp)</Label>
-                      <Input
-                        id="whatsapp_target_number"
-                        value={localForm.settings?.whatsapp_target_number || ''}
-                        onChange={(e) => handleSettingsChange('whatsapp_target_number', e.target.value)}
-                        placeholder="5511999998888 (deixe vazio para usar o padrão da instância)"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Número que receberá as notificações. Se vazio, usa o número padrão da instância selecionada.
-                      </p>
-                    </div>
-
                     <div className="border-t pt-4">
-                      <Label className="mb-2 block">Mensagem para Notificação (Admin/Equipe)</Label>
+                      <Label className="mb-2 block">Mensagem para o Cliente (Lead)</Label>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Esta mensagem será enviada automaticamente para o lead após o preenchimento.
+                      </p>
                       <WhatsAppMessageEditor
                         value={localForm.settings?.whatsapp_message}
                         onChange={(msg) => handleSettingsChange('whatsapp_message', msg)}
@@ -658,9 +648,9 @@ const FormEditor: React.FC = () => {
                     <div className="border-t pt-4 space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">Mensagem para o Cliente (Lead)</p>
+                          <p className="font-medium">Notificação Interna (Equipe)</p>
                           <p className="text-sm text-muted-foreground">
-                            Enviar mensagem de agradecimento/confirmação para o lead
+                            Enviar os dados do formulário para a equipe via WhatsApp
                           </p>
                         </div>
                         <Switch
@@ -670,19 +660,33 @@ const FormEditor: React.FC = () => {
                       </div>
 
                       {localForm.settings?.whatsapp_lead_notification && (
-                        <div className="space-y-2">
-                          <Label htmlFor="whatsapp_lead_message">Mensagem</Label>
-                          <Textarea
-                            id="whatsapp_lead_message"
-                            value={localForm.settings?.whatsapp_lead_message || ''}
-                            onChange={(e) => handleSettingsChange('whatsapp_lead_message', e.target.value)}
-                            placeholder="Olá {{name}}! Recebemos seus dados com sucesso."
-                            rows={3}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Variáveis disponíveis: {'{{name}}'}, {'{{form_name}}'}
-                          </p>
-                        </div>
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="whatsapp_target_number">Números WhatsApp da Equipe</Label>
+                            <Input
+                              id="whatsapp_target_number"
+                              value={localForm.settings?.whatsapp_target_number || ''}
+                              onChange={(e) => handleSettingsChange('whatsapp_target_number', e.target.value)}
+                              placeholder="5511999998888, 5511977776666"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Digite os números com DDD e código do país (55), separados por vírgula.
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="whatsapp_lead_message">Título da Mensagem (Opcional)</Label>
+                            <Input
+                              id="whatsapp_lead_message"
+                              value={localForm.settings?.whatsapp_lead_message || ''}
+                              onChange={(e) => handleSettingsChange('whatsapp_lead_message', e.target.value)}
+                              placeholder="🔔 Novo Lead Recebido!"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Todos os campos do formulário serão enviados automaticamente abaixo deste título.
+                            </p>
+                          </div>
+                        </>
                       )}
                     </div>
                   </>

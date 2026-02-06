@@ -179,7 +179,6 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           // Try to find client phone
           const clientPhone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular', 'mobile']);
           
-          // Force send to client if phone exists, ignoring whatsapp_lead_notification flag if global WA is enabled
           if (clientPhone) {
             const cleanClientPhone = String(clientPhone).replace(/\D/g, '');
             // Basic validation for Brazilian numbers (at least 10 digits: DDD + Number)
@@ -188,7 +187,8 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                
                // Prepare items to send (support both simple string and structured message)
                let itemsToSend = [];
-               let rawMessage = settings.whatsapp_lead_message || settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               // Use whatsapp_message for the lead (as per user request swap)
+               let rawMessage = settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
                
                if (typeof rawMessage === 'string') {
                    itemsToSend.push({ type: 'text', content: rawMessage });
@@ -196,15 +196,12 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                    if (Array.isArray(rawMessage.items)) {
                        itemsToSend = rawMessage.items;
                    } else {
-                       // Fallback for unknown object structure - try to use string representation
-                       // But check if it looks like the user input "[object Object]"
                        try {
                            const stringMsg = JSON.stringify(rawMessage);
-                           // If it's just {} or similar, fallback to default text
                            if (stringMsg === '{}' || stringMsg === '[]') {
                                itemsToSend.push({ type: 'text', content: 'Olá! Recebemos seus dados.' });
                            } else {
-                               itemsToSend.push({ type: 'text', content: String(rawMessage) }); // Will likely be [object Object] if not handled, but we try.
+                               itemsToSend.push({ type: 'text', content: String(rawMessage) });
                            }
                        } catch (e) {
                            itemsToSend.push({ type: 'text', content: 'Olá! Recebemos seus dados.' });
@@ -218,12 +215,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                    let processed = String(text);
                    processed = processed.replace(/\{\{form_name\}\}/g, form.name);
                    
-                   // Find name using common keys
                    const leadName = findField(data, ['nome', 'name', 'full_name', 'completo']) || '';
                    processed = processed.replace(/\{\{name\}\}/g, leadName);
                    processed = processed.replace(/\{\{nome\}\}/g, leadName);
                    
-                   // Replace all other variables found in data
                    for (const [key, value] of Object.entries(data)) {
                      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
                      processed = processed.replace(regex, String(value || ''));
@@ -236,20 +231,17 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                    try {
                        if (!url || typeof url !== 'string') return url;
                        
-                       // Check if it's a local upload URL (contains /api/uploads/)
                        if (url.includes('/api/uploads/')) {
                            const parts = url.split('/api/uploads/');
                            if (parts.length >= 2) {
-                               const subPath = parts[1]; // e.g., "documents/filename.pdf"
-                               // Handle both forward and backward slashes just in case
+                               const subPath = parts[1];
                                const cleanSubPath = subPath.replace(/\\/g, '/');
                                const pathParts = cleanSubPath.split('/');
                                
                                if (pathParts.length >= 2) {
                                    const type = pathParts[0];
-                                   const filename = pathParts.slice(1).join('/'); // In case filename has slashes (unlikely)
+                                   const filename = pathParts.slice(1).join('/');
                                    
-                                   // Use same UPLOAD_DIR logic as uploads.js
                                    const uploadDir = process.env.UPLOAD_DIR || '/app/uploads';
                                    const filePath = path.join(uploadDir, type, filename);
                                    
@@ -257,7 +249,6 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                                        console.log(`[WhatsApp] Converting local file to Base64: ${filePath}`);
                                        const fileBuffer = fs.readFileSync(filePath);
                                        const base64 = fileBuffer.toString('base64');
-                                       // Return Data URI
                                        return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
                                    } else {
                                        console.warn(`[WhatsApp] Local file not found: ${filePath}`);
@@ -266,45 +257,21 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            }
                        }
                        
-                       // Fallback: If local file not found or not local, try to use Public URL if it's localhost
                        if (url.includes('localhost')) {
                            try {
-                               // Extract path from URL (e.g., /api/uploads/...)
-                               // Handle case where url might not have protocol
                                let pathName = url;
                                if (url.startsWith('http')) {
                                    const urlObj = new URL(url);
                                    pathName = urlObj.pathname;
                                }
                                
-                               // Use configured public URL or the one provided by user
                                const publicUrl = process.env.API_PUBLIC_URL || 'https://form.gleego.com.br';
-                               // Remove trailing slash from publicUrl
                                const cleanPublicUrl = publicUrl.replace(/\/+$/, '');
                                
-                               // Ensure pathName starts with /
                                if (!pathName.startsWith('/')) pathName = '/' + pathName;
                                
-                               // If pathName already includes /api and publicUrl ends with /api, avoid duplication
-                               // User said public URL is https://form.gleego.com.br/api
-                               // But typically public URL is the domain. Let's handle both.
-                               
-                               // Construct new URL
-                               // If pathName is /api/uploads/... and publicUrl is https://form.gleego.com.br/api
-                               // We might get https://form.gleego.com.br/api/api/uploads/... which is wrong.
-                               
-                               // Let's assume publicUrl is the BASE domain/path for the API access.
-                               // User said: "meu endereço publico é https://form.gleego.com.br/api"
-                               
-                               // If we replace the origin:
-                               // http://localhost:3001/api/uploads/... -> https://form.gleego.com.br/api/uploads/...
-                               
-                               // Simplest approach: Replace the localhost origin with the public base
-                               // But we need to be careful about /api duplication.
-                               
                                if (cleanPublicUrl.endsWith('/api') && pathName.startsWith('/api/')) {
-                                   // Remove /api from pathName since it's in publicUrl
-                                   pathName = pathName.substring(4); // Remove /api
+                                   pathName = pathName.substring(4);
                                }
                                
                                const newUrl = `${cleanPublicUrl}${pathName}`;
@@ -315,18 +282,16 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            }
                        }
                        
-                       return url; // Return original URL if no changes
+                       return url;
                    } catch (e) {
                        console.error('[WhatsApp] Error converting media to Base64:', e.message);
                        return url;
                    }
                };
 
-               // Send items sequentially
+               // Send items to Client
                for (const [index, item] of itemsToSend.entries()) {
                    try {
-                       // Add delay between messages (start with configured delay, then 5s between items)
-                       // Increased delay to avoid "No sessions" error or concurrency issues
                        const delay = index === 0 ? 4000 : 6000; 
                        
                        let endpoint = '/message/sendText';
@@ -336,42 +301,32 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            linkPreview: false
                        };
 
-                       // Process content based on type
                        if (item.type === 'text') {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
                        } else if (item.type === 'audio') {
                            endpoint = '/message/sendWhatsAppAudio';
-                           // Handle local audio files too
                            payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3'); 
                        } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                            endpoint = '/message/sendMedia';
                            payload.mediatype = item.type;
-                           
-                           // Convert to Base64 if local file
                            payload.media = getMediaContent(item.content, item.mimeType);
-                           
                            if (item.filename) payload.fileName = item.filename;
                            if (item.mimeType) payload.mimetype = item.mimeType;
-                           // Some integrations allow caption for media
-                           // payload.caption = replaceVariables(item.caption || ''); 
                        } else {
-                           // Fallback to text if unknown type
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(String(item.content || ''));
                        }
 
-                       // Send request with Retry logic for "SessionError"
                        let attempts = 0;
                        let success = false;
                        const maxAttempts = 3;
                        
                        while (attempts < maxAttempts && !success) {
                            attempts++;
-                           console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to ${cleanClientPhone} (Attempt ${attempts})`);
+                           console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to Client ${cleanClientPhone} (Attempt ${attempts})`);
                            
                            try {
-                               // Ensure credentials are clean (trim whitespace)
                                const instanceName = instance.name.trim();
                                const apiKey = instance.api_key.trim();
 
@@ -387,51 +342,108 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                                 const resData = await res.json().catch(() => ({}));
                                 
                                 if (res.ok) {
-                                     success = true;
-                                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', payload, resData);
+                                   success = true;
+                                   console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
+                                   await logIntegration(pool, form.id, lead.id, 'whatsapp_client', 'success', payload, resData);
                                 } else {
-                                     console.error(`[WhatsApp] Item ${index + 1} failed (Attempt ${attempts}):`, resData);
+                                   const isSessionError = 
+                                     (resData?.response?.key === 'SessionError') || 
+                                     (resData?.message === 'SessionError') ||
+                                     (JSON.stringify(resData).includes('SessionError')) ||
+                                     (resData?.status === 404); // 404 often means session not found/closed
                                      
-                                     // Check if it's a SessionError, if so, wait and retry
-                                     const isSessionError = resData.response?.message && 
-                                                            (Array.isArray(resData.response.message) 
-                                                                ? resData.response.message.some(m => String(m).includes('SessionError')) 
-                                                                : String(resData.response.message).includes('SessionError'));
-                                     
-                                     if (isSessionError && attempts < maxAttempts) {
-                                         console.log(`[WhatsApp] SessionError detected. Retrying in 10 seconds...`);
-                                         await new Promise(resolve => setTimeout(resolve, 10000));
-                                         continue;
-                                     }
-                                     
-                                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', payload, resData, resData.message || 'Error sending item');
+                                   if (isSessionError && attempts < maxAttempts) {
+                                      console.log(`[WhatsApp] SessionError detected. Retrying in 10 seconds...`);
+                                      await new Promise(resolve => setTimeout(resolve, 10000));
+                                      continue;
+                                   }
+                                   throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
                                 }
-                           } catch (reqErr) {
-                               console.error(`[WhatsApp] Request error (Attempt ${attempts}):`, reqErr.message);
-                               if (attempts === maxAttempts) {
-                                   await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { item_index: index, type: item.type }, null, reqErr.message);
-                               }
+                           } catch (err) {
+                               if (attempts >= maxAttempts) throw err;
+                               console.warn(`[WhatsApp] Attempt ${attempts} failed: ${err.message}`);
+                               await new Promise(resolve => setTimeout(resolve, 2000));
                            }
                        }
-                        
-                        // Wait a bit before next message if not last
-                        if (index < itemsToSend.length - 1) {
-                            await new Promise(resolve => setTimeout(resolve, 4000));
-                        }
-
                    } catch (err) {
-                      console.error(`[WhatsApp] Item ${index + 1} error:`, err.message);
-                      await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { item_index: index, type: item.type }, null, err.message);
+                       console.error(`[WhatsApp] Client send error item ${index}:`, err.message);
+                       await logIntegration(pool, form.id, lead.id, 'whatsapp_client', 'error', {}, null, err.message);
                    }
                }
-            } else {
-                await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { phone: clientPhone }, null, 'Número de telefone do lead inválido ou curto demais');
             }
-          } else {
-             console.log('[WhatsApp] No client phone found in form data');
-             // Optional: Log that we couldn't find a phone number
-             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', {}, null, 'Telefone do lead não encontrado nos dados do formulário');
           }
+
+          // --- Send to Team (Admin/Staff) ---
+          // Using settings.whatsapp_lead_notification as the switch for Team notification (swapped per user request)
+          if (settings.whatsapp_lead_notification && settings.whatsapp_target_number) {
+              const teamNumbers = settings.whatsapp_target_number.split(',').map(n => n.trim()).filter(n => n);
+              
+              if (teamNumbers.length > 0) {
+                  console.log(`[WhatsApp] Sending Team notification to ${teamNumbers.length} numbers`);
+                  
+                  // Construct message with ALL fields
+                  let teamMessage = settings.whatsapp_lead_message || '🔔 Novo Lead Recebido!';
+                  teamMessage += '\n\n';
+                  
+                  // Add form name
+                  teamMessage += `Formulário: ${form.name}\n`;
+                  teamMessage += `Data: ${new Date().toLocaleString('pt-BR')}\n\n`;
+                  
+                  // Add all data fields
+                  for (const [key, value] of Object.entries(data)) {
+                      // Skip internal/empty keys if necessary, or just dump everything
+                      if (value !== undefined && value !== null && value !== '') {
+                          // Format key to be more readable if possible (capitalize)
+                          const readableKey = key.charAt(0).toUpperCase() + key.slice(1);
+                          teamMessage += `*${readableKey}*: ${value}\n`;
+                      }
+                  }
+                  
+                  // Send to each number
+                  for (const rawNumber of teamNumbers) {
+                      const cleanTeamNumber = rawNumber.replace(/\D/g, '');
+                      if (cleanTeamNumber.length >= 10) {
+                          const payload = {
+                              number: cleanTeamNumber,
+                              text: teamMessage,
+                              delay: 2000,
+                              linkPreview: false
+                          };
+                          
+                          try {
+                               const instanceName = instance.name.trim();
+                               const apiKey = instance.api_key.trim();
+                               
+                               console.log(`[WhatsApp] Sending Team notification to ${cleanTeamNumber}`);
+                               
+                               const res = await fetch(`${effectiveUrl}/message/sendText/${instanceName}`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'apikey': apiKey,
+                                    },
+                                    body: JSON.stringify(payload),
+                                });
+                                
+                                const resData = await res.json().catch(() => ({}));
+                                
+                                if (res.ok) {
+                                   console.log(`[WhatsApp] Team notification sent to ${cleanTeamNumber}`);
+                                   await logIntegration(pool, form.id, lead.id, 'whatsapp_team', 'success', payload, resData);
+                                } else {
+                                   console.error(`[WhatsApp] Team send error for ${cleanTeamNumber}:`, resData);
+                                   await logIntegration(pool, form.id, lead.id, 'whatsapp_team', 'error', payload, resData, JSON.stringify(resData));
+                                }
+                          } catch (err) {
+                              console.error(`[WhatsApp] Team send exception for ${cleanTeamNumber}:`, err.message);
+                              await logIntegration(pool, form.id, lead.id, 'whatsapp_team', 'error', payload, null, err.message);
+                          }
+                      }
+                  }
+              }
+          }
+                                
+
         } catch (error) {
           console.error('[WhatsApp] Global Error:', error.message);
           await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, error.message);
