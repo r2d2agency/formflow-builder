@@ -90,8 +90,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Build version - update this when deploying
-const BUILD_VERSION = '2.1.2';
-const BUILD_DATE = '2025-02-05T12:00:00Z';
+const BUILD_VERSION = '2.1.3';
+const BUILD_DATE = '2025-02-06T12:00:00Z';
 
 // Health check
 app.get('/health', async (req, res) => {
