@@ -300,7 +300,7 @@ router.post('/:id/test', async (req, res) => {
         const finalError = innerError.message || error.message;
         res.status(400).json({
           success: false,
-          error: 'Falha ao conectar com a Evolution API',
+          error: `Falha ao conectar com a Evolution API: ${finalError}`,
           details: { 
              message: finalError,
              original_error: error.message,
