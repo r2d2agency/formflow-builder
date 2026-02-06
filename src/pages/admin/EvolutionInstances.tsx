@@ -66,6 +66,7 @@ const EvolutionInstances: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     api_url: '',
+    internal_api_url: '',
     api_key: '',
     default_number: '',
     is_active: true,
@@ -87,6 +88,7 @@ const EvolutionInstances: React.FC = () => {
       setFormData({
         name: instance.name,
         api_url: instance.api_url,
+        internal_api_url: instance.internal_api_url || '',
         api_key: instance.api_key,
         default_number: instance.default_number || '',
         is_active: instance.is_active,
@@ -96,6 +98,7 @@ const EvolutionInstances: React.FC = () => {
       setFormData({
         name: '',
         api_url: '',
+        internal_api_url: '',
         api_key: '',
         default_number: '',
         is_active: true,
@@ -319,13 +322,25 @@ const EvolutionInstances: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="api_url">URL da API</Label>
+              <Label htmlFor="api_url">URL da API (Pública)</Label>
               <Input
                 id="api_url"
                 placeholder="https://evolution.seusite.com"
                 value={formData.api_url}
                 onChange={(e) => setFormData({ ...formData, api_url: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="internal_api_url">URL Interno (opcional)</Label>
+              <Input
+                id="internal_api_url"
+                placeholder="http://192.168.1.10:8080 ou http://evolution:8080"
+                value={formData.internal_api_url}
+                onChange={(e) => setFormData({ ...formData, internal_api_url: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                IP ou hostname interno para uso no backend (bypass de DNS). Se vazio, usa a URL pública.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="api_key">API Key</Label>
