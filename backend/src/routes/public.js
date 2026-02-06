@@ -260,7 +260,57 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                                }
                            }
                        }
-                       return url; // Return original URL if not local or not found
+                       
+                       // Fallback: If local file not found or not local, try to use Public URL if it's localhost
+                       if (url.includes('localhost')) {
+                           try {
+                               // Extract path from URL (e.g., /api/uploads/...)
+                               // Handle case where url might not have protocol
+                               let pathName = url;
+                               if (url.startsWith('http')) {
+                                   const urlObj = new URL(url);
+                                   pathName = urlObj.pathname;
+                               }
+                               
+                               // Use configured public URL or the one provided by user
+                               const publicUrl = process.env.API_PUBLIC_URL || 'https://form.gleego.com.br';
+                               // Remove trailing slash from publicUrl
+                               const cleanPublicUrl = publicUrl.replace(/\/+$/, '');
+                               
+                               // Ensure pathName starts with /
+                               if (!pathName.startsWith('/')) pathName = '/' + pathName;
+                               
+                               // If pathName already includes /api and publicUrl ends with /api, avoid duplication
+                               // User said public URL is https://form.gleego.com.br/api
+                               // But typically public URL is the domain. Let's handle both.
+                               
+                               // Construct new URL
+                               // If pathName is /api/uploads/... and publicUrl is https://form.gleego.com.br/api
+                               // We might get https://form.gleego.com.br/api/api/uploads/... which is wrong.
+                               
+                               // Let's assume publicUrl is the BASE domain/path for the API access.
+                               // User said: "meu endereço publico é https://form.gleego.com.br/api"
+                               
+                               // If we replace the origin:
+                               // http://localhost:3001/api/uploads/... -> https://form.gleego.com.br/api/uploads/...
+                               
+                               // Simplest approach: Replace the localhost origin with the public base
+                               // But we need to be careful about /api duplication.
+                               
+                               if (cleanPublicUrl.endsWith('/api') && pathName.startsWith('/api/')) {
+                                   // Remove /api from pathName since it's in publicUrl
+                                   pathName = pathName.substring(4); // Remove /api
+                               }
+                               
+                               const newUrl = `${cleanPublicUrl}${pathName}`;
+                               console.log(`[WhatsApp] Replaced localhost URL with Public URL: ${newUrl}`);
+                               return newUrl;
+                           } catch (err) {
+                               console.warn('[WhatsApp] Failed to replace localhost URL:', err.message);
+                           }
+                       }
+                       
+                       return url; // Return original URL if no changes
                    } catch (e) {
                        console.error('[WhatsApp] Error converting media to Base64:', e.message);
                        return url;
