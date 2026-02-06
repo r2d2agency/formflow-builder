@@ -85,7 +85,6 @@ const runMigrations = async () => {
     console.error('[startup] Migration error:', err.message);
   }
 };
-runMigrations();
 
 // Middleware
 app.use(cors({
@@ -96,8 +95,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Build version - update this when deploying
-const BUILD_VERSION = '2.1.0';
-const BUILD_DATE = '2025-02-05T12:00:00Z';
+const BUILD_VERSION = '2.1.1';
+const BUILD_DATE = '2025-02-05T15:30:00Z';
 
 // Health check
 app.get('/health', async (req, res) => {
@@ -161,16 +160,23 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 FormBuilder API running on port ${PORT}`);
-  // Startup DB check (logs only; does not crash the container)
-  pool
-    .query('SELECT 1')
-    .then(() => console.log('[startup] DB connection: OK'))
-    .catch((err) =>
-      console.error('[startup] DB connection: FAILED', {
-        message: err?.message,
-        code: err?.code,
-      })
-    );
-});
+const startServer = async () => {
+  // Run auto-migrations before starting server
+  await runMigrations();
+
+  app.listen(PORT, () => {
+    console.log(`🚀 FormBuilder API running on port ${PORT}`);
+    // Startup DB check (logs only; does not crash the container)
+    pool
+      .query('SELECT 1')
+      .then(() => console.log('[startup] DB connection: OK'))
+      .catch((err) =>
+        console.error('[startup] DB connection: FAILED', {
+          message: err?.message,
+          code: err?.code,
+        })
+      );
+  });
+};
+
+startServer();
