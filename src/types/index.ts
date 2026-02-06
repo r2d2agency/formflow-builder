@@ -108,6 +108,9 @@ export interface FormSettings {
   // Custom code injection for domain verification (Meta, Google, etc.)
   custom_head_code?: string;
   custom_body_code?: string;
+  // Download Button
+  download_button_text?: string;
+  download_button_url?: string;
 }
 
 export interface Form {

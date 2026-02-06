@@ -371,6 +371,35 @@ const FormEditor: React.FC = () => {
                     rows={2}
                   />
                 </div>
+
+                {/* Download Button Settings */}
+                <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Botão de Download (Página de Sucesso)
+                  </h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="download_button_text">Texto do Botão</Label>
+                      <Input
+                        id="download_button_text"
+                        value={localForm.settings?.download_button_text || ''}
+                        onChange={(e) => handleSettingsChange('download_button_text', e.target.value)}
+                        placeholder="Baixar E-book"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="download_button_url">URL do Arquivo</Label>
+                      <Input
+                        id="download_button_url"
+                        value={localForm.settings?.download_button_url || ''}
+                        onChange={(e) => handleSettingsChange('download_button_url', e.target.value)}
+                        placeholder="https://exemplo.com/arquivo.pdf"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Formulário Ativo</p>

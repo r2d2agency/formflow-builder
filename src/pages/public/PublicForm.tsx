@@ -791,16 +791,26 @@ const StandardRenderer: React.FC<{
 };
 
 // Success screen - CENTRALIZED
-const SuccessScreen: React.FC<{ message?: string; logoUrl?: string; isEmbed?: boolean }> = ({ 
+const SuccessScreen: React.FC<{ 
+  message?: string; 
+  logoUrl?: string; 
+  isEmbed?: boolean;
+  downloadButtonText?: string;
+  downloadButtonUrl?: string;
+  primaryColor?: string;
+}> = ({ 
   message, 
   logoUrl, 
-  isEmbed 
+  isEmbed,
+  downloadButtonText,
+  downloadButtonUrl,
+  primaryColor
 }) => (
   <div className={cn(
     "flex items-center justify-center bg-gradient-to-br from-background to-muted p-4",
     isEmbed ? "min-h-full" : "min-h-screen"
   )}>
-    <div className="text-center space-y-4">
+    <div className="text-center space-y-6">
       {logoUrl && (
         <img 
           src={logoUrl} 
@@ -811,10 +821,27 @@ const SuccessScreen: React.FC<{ message?: string; logoUrl?: string; isEmbed?: bo
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
         <Check className="h-8 w-8 text-primary" />
       </div>
-      <h1 className="text-2xl font-bold">Obrigado!</h1>
-      <p className="text-muted-foreground max-w-md">
-        {message || 'Seu cadastro foi realizado com sucesso.'}
-      </p>
+      
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold">Obrigado!</h1>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          {message || 'Seu cadastro foi realizado com sucesso.'}
+        </p>
+      </div>
+
+      {downloadButtonUrl && (
+        <div className="pt-4">
+          <Button 
+            size="lg" 
+            onClick={() => window.open(downloadButtonUrl, '_blank')}
+            className="gap-2"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <ArrowRight className="h-4 w-4" />
+            {downloadButtonText || 'Baixar Arquivo'}
+          </Button>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -993,6 +1020,9 @@ const PublicForm: React.FC = () => {
         message={displayForm.settings?.success_message} 
         logoUrl={displayForm.settings?.logo_url}
         isEmbed={isEmbed}
+        downloadButtonText={displayForm.settings?.download_button_text}
+        downloadButtonUrl={displayForm.settings?.download_button_url}
+        primaryColor={displayForm.settings?.primary_color}
       />
     );
   }
