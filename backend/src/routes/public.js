@@ -210,8 +210,13 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                    if (!text) return '';
                    let processed = String(text);
                    processed = processed.replace(/\{\{form_name\}\}/g, form.name);
-                   processed = processed.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
                    
+                   // Find name using common keys
+                   const leadName = findField(data, ['nome', 'name', 'full_name', 'completo']) || '';
+                   processed = processed.replace(/\{\{name\}\}/g, leadName);
+                   processed = processed.replace(/\{\{nome\}\}/g, leadName);
+                   
+                   // Replace all other variables found in data
                    for (const [key, value] of Object.entries(data)) {
                      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
                      processed = processed.replace(regex, String(value || ''));
