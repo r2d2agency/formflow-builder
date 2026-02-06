@@ -255,15 +255,16 @@ router.post('/:id/send-test', async (req, res) => {
       endpoint = `${effectiveUrl}/message/sendText/${encodedName}`;
       payload = {
         number: cleanPhone,
-        textMessage: { text: message },
-        options: { delay: 1200, presence: "composing" }
+        text: message,
+        delay: 1200,
+        linkPreview: false
       };
     } else if (type === 'audio') {
       endpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${encodedName}`;
       payload = {
         number: cleanPhone,
         audio: media_url,
-        options: { delay: 1200, presence: "recording" }
+        delay: 1200
       };
     } else {
       // image, video, document
@@ -274,7 +275,7 @@ router.post('/:id/send-test', async (req, res) => {
         media: media_url,
         fileName: filename || 'file',
         caption: message || '', // Optional caption
-        options: { delay: 1200, presence: "composing" }
+        delay: 1200
       };
     }
 
