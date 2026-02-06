@@ -179,48 +179,110 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
             if (cleanClientPhone.length >= 10) {
                console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
                
-               // Use lead message, fallback to main message (if user configured single message), fallback to default
+               // Prepare items to send (support both simple string and structured message)
+               let itemsToSend = [];
                let rawMessage = settings.whatsapp_lead_message || settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
                
-               // Ensure message is a string to avoid "replace is not a function" error
-               let clientMessage = String(rawMessage);
-               
-               // Replace variables
-               clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
-               clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
-               
-               // Also replace any other field variables like {{email}}, {{city}}, etc.
-               for (const [key, value] of Object.entries(data)) {
-                 const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-                 clientMessage = clientMessage.replace(regex, String(value || ''));
+               if (typeof rawMessage === 'string') {
+                   itemsToSend.push({ type: 'text', content: rawMessage });
+               } else if (typeof rawMessage === 'object' && rawMessage !== null) {
+                   if (Array.isArray(rawMessage.items)) {
+                       itemsToSend = rawMessage.items;
+                   } else {
+                       // Fallback for unknown object structure - try to use string representation
+                       // But check if it looks like the user input "[object Object]"
+                       try {
+                           const stringMsg = JSON.stringify(rawMessage);
+                           // If it's just {} or similar, fallback to default text
+                           if (stringMsg === '{}' || stringMsg === '[]') {
+                               itemsToSend.push({ type: 'text', content: 'Olá! Recebemos seus dados.' });
+                           } else {
+                               itemsToSend.push({ type: 'text', content: String(rawMessage) }); // Will likely be [object Object] if not handled, but we try.
+                           }
+                       } catch (e) {
+                           itemsToSend.push({ type: 'text', content: 'Olá! Recebemos seus dados.' });
+                       }
+                   }
                }
-               
-               const clientPayload = {
-                  number: cleanClientPhone,
-                  text: clientMessage,
-                  delay: 2000,
-                  linkPreview: false
+
+               // Helper to replace variables
+               const replaceVariables = (text) => {
+                   if (!text) return '';
+                   let processed = String(text);
+                   processed = processed.replace(/\{\{form_name\}\}/g, form.name);
+                   processed = processed.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
+                   
+                   for (const [key, value] of Object.entries(data)) {
+                     const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+                     processed = processed.replace(regex, String(value || ''));
+                   }
+                   return processed;
                };
 
-               try {
-                 const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'apikey': instance.api_key,
-                    },
-                    body: JSON.stringify(clientPayload),
-                  });
-                  const resData = await res.json().catch(() => ({}));
-                  if (res.ok) {
-                     console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
-                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', clientPayload, resData);
-                  } else {
-                     throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
-                  }
-               } catch (err) {
-                  console.error(`[WhatsApp] Client send error:`, err.message);
-                  await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', clientPayload, null, err.message);
+               // Send items sequentially
+               for (const [index, item] of itemsToSend.entries()) {
+                   try {
+                       // Add delay between messages (start with configured delay, then 2s between items)
+                       const delay = index === 0 ? 2000 : 2000; 
+                       
+                       let endpoint = '/message/sendText';
+                       let payload = {
+                           number: cleanClientPhone,
+                           delay: delay,
+                           linkPreview: false
+                       };
+
+                       // Process content based on type
+                       if (item.type === 'text') {
+                           endpoint = '/message/sendText';
+                           payload.text = replaceVariables(item.content);
+                       } else if (item.type === 'audio') {
+                           endpoint = '/message/sendWhatsAppAudio';
+                           payload.audio = item.content; // URL
+                       } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
+                           endpoint = '/message/sendMedia';
+                           payload.mediatype = item.type;
+                           payload.media = item.content; // URL
+                           if (item.filename) payload.fileName = item.filename;
+                           if (item.mimeType) payload.mimetype = item.mimeType;
+                           // Some integrations allow caption for media
+                           // payload.caption = replaceVariables(item.caption || ''); 
+                       } else {
+                           // Fallback to text if unknown type
+                           endpoint = '/message/sendText';
+                           payload.text = replaceVariables(String(item.content || ''));
+                       }
+
+                       // Send request
+                       console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to ${cleanClientPhone}`);
+                       
+                       const res = await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'apikey': instance.api_key,
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        
+                        const resData = await res.json().catch(() => ({}));
+                        
+                        if (res.ok) {
+                             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', payload, resData);
+                        } else {
+                             console.error(`[WhatsApp] Item ${index + 1} failed:`, resData);
+                             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', payload, resData, resData.message || 'Error sending item');
+                        }
+                        
+                        // Wait a bit before next message if not last
+                        if (index < itemsToSend.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                        }
+
+                   } catch (err) {
+                      console.error(`[WhatsApp] Item ${index + 1} error:`, err.message);
+                      await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { item_index: index, type: item.type }, null, err.message);
+                   }
                }
             } else {
                 await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { phone: clientPhone }, null, 'Número de telefone do lead inválido ou curto demais');
