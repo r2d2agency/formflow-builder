@@ -180,7 +180,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
                
                // Use lead message, fallback to main message (if user configured single message), fallback to default
-               let clientMessage = settings.whatsapp_lead_message || settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               let rawMessage = settings.whatsapp_lead_message || settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               
+               // Ensure message is a string to avoid "replace is not a function" error
+               let clientMessage = String(rawMessage);
                
                // Replace variables
                clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
