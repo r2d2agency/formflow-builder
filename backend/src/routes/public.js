@@ -229,11 +229,19 @@ router.post('/forms/:slug/submit', async (req, res) => {
                   text = text.replace(/\{\{dados\}\}/g, dataEntries);
                   
                   apiEndpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
-                  body = { number: cleanNumber, textMessage: { text } };
+                  body = { 
+                    number: cleanNumber, 
+                    textMessage: { text },
+                    options: { delay: 1200, presence: "composing" }
+                  };
                   
                 } else if (item.type === 'audio') {
                   apiEndpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${instance.name}`;
-                  body = { number: cleanNumber, audio: item.content };
+                  body = { 
+                    number: cleanNumber, 
+                    audio: item.content,
+                    options: { delay: 1200, presence: "recording" }
+                  };
                   
                 } else if (item.type === 'video' || item.type === 'document') {
                   apiEndpoint = `${effectiveUrl}/message/sendMedia/${instance.name}`;
@@ -242,11 +250,14 @@ router.post('/forms/:slug/submit', async (req, res) => {
                     mediatype: item.type === 'video' ? 'video' : 'document',
                     media: item.content,
                     fileName: item.filename || 'file',
+                    options: { delay: 1200, presence: "composing" }
                   };
                 }
                 
                 if (apiEndpoint && body) {
                   console.log(`[WhatsApp] Sending ${item.type} message...`);
+                  console.log(`[WhatsApp] Endpoint: ${apiEndpoint}`);
+                  
                   const response = await fetch(apiEndpoint, {
                     method: 'POST',
                     headers: {
@@ -256,8 +267,8 @@ router.post('/forms/:slug/submit', async (req, res) => {
                     body: JSON.stringify(body),
                   });
                   
-                  const responseData = await response.json();
-                  console.log(`[WhatsApp] ${item.type} response:`, response.status, responseData?.key?.id || responseData?.message || 'OK');
+                  const responseData = await response.json().catch(() => ({ error: 'Invalid JSON' }));
+                  console.log(`[WhatsApp] ${item.type} response:`, response.status, responseData);
                   
                   if (!response.ok) {
                     console.error(`[WhatsApp] ${item.type} error:`, responseData);
@@ -283,7 +294,10 @@ router.post('/forms/:slug/submit', async (req, res) => {
               message = message.replace(/\{\{dados\}\}/g, dataEntries);
               
               console.log('[WhatsApp] Sending simple text message...');
-              const response = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+              const endpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
+              console.log('[WhatsApp] Endpoint:', endpoint);
+
+              const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -292,11 +306,12 @@ router.post('/forms/:slug/submit', async (req, res) => {
                 body: JSON.stringify({
                   number: cleanNumber,
                   textMessage: { text: message },
+                  options: { delay: 1200, presence: "composing" }
                 }),
               });
 
-              const responseData = await response.json();
-              console.log('[WhatsApp] Response:', response.status, responseData?.key?.id || responseData?.message || 'OK');
+              const responseData = await response.json().catch(() => ({ error: 'Invalid JSON' }));
+              console.log('[WhatsApp] Response:', response.status, responseData);
               
               if (!response.ok) {
                 console.error('[WhatsApp] Error:', responseData);

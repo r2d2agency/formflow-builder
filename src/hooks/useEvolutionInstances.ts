@@ -158,10 +158,17 @@ export const useTestEvolutionInstance = () => {
 
 export const useSendTestMessage = () => {
   return useMutation({
-    mutationFn: async ({ id, phone, message }: { id: string; phone: string; message: string }) => {
+    mutationFn: async ({ id, phone, message, type, media_url, filename }: { 
+      id: string; 
+      phone: string; 
+      message: string;
+      type?: string;
+      media_url?: string;
+      filename?: string;
+    }) => {
       const response = await apiService.post<{ success: boolean }>(
         `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCE_BY_ID(id)}/send-test`,
-        { phone, message }
+        { phone, message, type, media_url, filename }
       );
       if (!response.success) {
         throw new Error(response.error);

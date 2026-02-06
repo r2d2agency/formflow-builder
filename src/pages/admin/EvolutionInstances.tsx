@@ -23,6 +23,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   useEvolutionInstances,
   useCreateEvolutionInstance,
   useUpdateEvolutionInstance,
@@ -62,6 +69,9 @@ const EvolutionInstances: React.FC = () => {
   const [testMessageData, setTestMessageData] = useState({
     phone: '',
     message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
+    type: 'text',
+    media_url: '',
+    filename: '',
   });
   const [formData, setFormData] = useState({
     name: '',
@@ -140,6 +150,9 @@ const EvolutionInstances: React.FC = () => {
     setTestMessageData({
       phone: instance.default_number || '',
       message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
+      type: 'text',
+      media_url: '',
+      filename: '',
     });
   };
 
@@ -149,6 +162,9 @@ const EvolutionInstances: React.FC = () => {
       id: sendTestInstance.id,
       phone: testMessageData.phone,
       message: testMessageData.message,
+      type: testMessageData.type,
+      media_url: testMessageData.media_url,
+      filename: testMessageData.filename,
     });
     setSendTestInstance(null);
   };
@@ -427,11 +443,57 @@ const EvolutionInstances: React.FC = () => {
                 Número com código do país (sem espaços ou símbolos)
               </p>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="test_message">Mensagem</Label>
+              <Label>Tipo de Mensagem</Label>
+              <Select 
+                value={testMessageData.type} 
+                onValueChange={(value) => setTestMessageData({ ...testMessageData, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Texto</SelectItem>
+                  <SelectItem value="image">Imagem</SelectItem>
+                  <SelectItem value="video">Vídeo</SelectItem>
+                  <SelectItem value="audio">Áudio</SelectItem>
+                  <SelectItem value="document">Documento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {testMessageData.type !== 'text' && (
+              <div className="space-y-2">
+                <Label htmlFor="test_media_url">URL da Mídia</Label>
+                <Input
+                  id="test_media_url"
+                  placeholder="https://exemplo.com/arquivo.jpg"
+                  value={testMessageData.media_url}
+                  onChange={(e) => setTestMessageData({ ...testMessageData, media_url: e.target.value })}
+                />
+              </div>
+            )}
+
+            {testMessageData.type === 'document' && (
+              <div className="space-y-2">
+                <Label htmlFor="test_filename">Nome do Arquivo</Label>
+                <Input
+                  id="test_filename"
+                  placeholder="documento.pdf"
+                  value={testMessageData.filename}
+                  onChange={(e) => setTestMessageData({ ...testMessageData, filename: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="test_message">
+                {testMessageData.type === 'text' ? 'Mensagem' : 'Legenda (Opcional)'}
+              </Label>
               <Textarea
                 id="test_message"
-                placeholder="Digite a mensagem de teste..."
+                placeholder={testMessageData.type === 'text' ? "Digite a mensagem de teste..." : "Legenda para a mídia..."}
                 value={testMessageData.message}
                 onChange={(e) => setTestMessageData({ ...testMessageData, message: e.target.value })}
                 rows={4}
@@ -444,7 +506,12 @@ const EvolutionInstances: React.FC = () => {
             </Button>
             <Button 
               onClick={handleSendTestMessage}
-              disabled={sendTestMessage.isPending || !testMessageData.phone || !testMessageData.message}
+              disabled={
+                sendTestMessage.isPending || 
+                !testMessageData.phone || 
+                (testMessageData.type === 'text' && !testMessageData.message) ||
+                (testMessageData.type !== 'text' && !testMessageData.media_url)
+              }
             >
               {sendTestMessage.isPending ? (
                 <>
