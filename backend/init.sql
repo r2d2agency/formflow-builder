@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS evolution_instances (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     api_url VARCHAR(500) NOT NULL,
+    internal_api_url VARCHAR(500),
     api_key VARCHAR(500) NOT NULL,
     default_number VARCHAR(20),
     is_active BOOLEAN DEFAULT true,

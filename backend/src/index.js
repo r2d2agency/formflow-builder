@@ -63,6 +63,30 @@ pool.on('error', (err) => {
 // Make pool available to routes
 app.locals.pool = pool;
 
+// Auto-migration (Temporary Fix for existing deployments)
+// This attempts to add missing columns to existing tables
+const runMigrations = async () => {
+  try {
+    // Add internal_api_url to evolution_instances if missing
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'evolution_instances' AND column_name = 'internal_api_url'
+        ) THEN
+          ALTER TABLE evolution_instances ADD COLUMN internal_api_url VARCHAR(500);
+          RAISE NOTICE 'Added internal_api_url column to evolution_instances';
+        END IF;
+      END $$;
+    `);
+    console.log('[startup] Migrations checked');
+  } catch (err) {
+    console.error('[startup] Migration error:', err.message);
+  }
+};
+runMigrations();
+
 // Middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
