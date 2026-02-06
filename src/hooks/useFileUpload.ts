@@ -10,7 +10,7 @@ interface UploadResult {
   content_type: string;
 }
 
-type UploadType = 'logos' | 'audio' | 'video' | 'documents';
+type UploadType = 'logos' | 'audio' | 'video' | 'documents' | 'images';
 
 export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
@@ -69,6 +69,7 @@ export const useFileUpload = () => {
   const uploadAudio = (file: File) => uploadFile(file, 'audio');
   const uploadVideo = (file: File) => uploadFile(file, 'video');
   const uploadDocument = (file: File) => uploadFile(file, 'documents');
+  const uploadImage = (file: File) => uploadFile(file, 'images');
 
   return {
     isUploading,
@@ -78,5 +79,6 @@ export const useFileUpload = () => {
     uploadAudio,
     uploadVideo,
     uploadDocument,
+    uploadImage,
   };
 };

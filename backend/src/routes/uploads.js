@@ -19,7 +19,7 @@ const ensureDir = (dir) => {
 router.get('/:type/:filename', (req, res) => {
   try {
     const { type, filename } = req.params;
-    const validTypes = ['logos', 'audio', 'video', 'documents'];
+    const validTypes = ['logos', 'audio', 'video', 'documents', 'images'];
     
     if (!validTypes.includes(type)) {
       return res.status(400).json({ success: false, error: 'Tipo inválido' });
@@ -42,7 +42,7 @@ router.get('/:type/:filename', (req, res) => {
 router.post('/:type', authMiddleware, async (req, res) => {
   try {
     const { type } = req.params;
-    const validTypes = ['logos', 'audio', 'video', 'documents'];
+    const validTypes = ['logos', 'audio', 'video', 'documents', 'images'];
     
     if (!validTypes.includes(type)) {
       return res.status(400).json({ success: false, error: 'Tipo inválido' });
@@ -92,7 +92,7 @@ router.post('/:type', authMiddleware, async (req, res) => {
 router.delete('/:type/:filename', authMiddleware, async (req, res) => {
   try {
     const { type, filename } = req.params;
-    const validTypes = ['logos', 'audio', 'video', 'documents'];
+    const validTypes = ['logos', 'audio', 'video', 'documents', 'images'];
     
     if (!validTypes.includes(type)) {
       return res.status(400).json({ success: false, error: 'Tipo inválido' });

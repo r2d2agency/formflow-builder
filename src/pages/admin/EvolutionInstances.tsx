@@ -37,6 +37,7 @@ import {
   useTestEvolutionInstance,
   useSendTestMessage,
 } from '@/hooks/useEvolutionInstances';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import {
   Plus,
   Edit,
@@ -45,6 +46,7 @@ import {
   MessageSquare,
   Loader2,
   Send,
+  Upload,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -87,9 +89,41 @@ const EvolutionInstances: React.FC = () => {
   const deleteInstance = useDeleteEvolutionInstance();
   const testInstance = useTestEvolutionInstance();
   const sendTestMessage = useSendTestMessage();
+  const { uploadFile, isUploading } = useFileUpload();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const displayInstances = instances ?? [];
   const loadErrorMessage = error instanceof Error ? error.message : (error ? 'Erro ao carregar instâncias.' : null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Map message type to upload type
+    let uploadType: 'images' | 'video' | 'audio' | 'documents' = 'documents';
+    if (testMessageData.type === 'image') uploadType = 'images';
+    else if (testMessageData.type === 'video') uploadType = 'video';
+    else if (testMessageData.type === 'audio') uploadType = 'audio';
+
+    const result = await uploadFile(file, uploadType);
+    
+    if (result) {
+      setTestMessageData(prev => ({
+        ...prev,
+        media_url: result.url,
+        filename: prev.type === 'document' ? result.original_filename : prev.filename
+      }));
+    }
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleOpenDialog = (instance?: EvolutionInstance) => {
     if (instance) {
@@ -451,12 +485,35 @@ const EvolutionInstances: React.FC = () => {
             {testMessageData.type !== 'text' && (
               <div className="space-y-2">
                 <Label htmlFor="test_media_url">URL da Mídia</Label>
-                <Input
-                  id="test_media_url"
-                  placeholder="https://exemplo.com/arquivo.jpg"
-                  value={testMessageData.media_url}
-                  onChange={(e) => setTestMessageData({ ...testMessageData, media_url: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="test_media_url"
+                    placeholder="https://exemplo.com/arquivo.jpg"
+                    value={testMessageData.media_url}
+                    onChange={(e) => setTestMessageData({ ...testMessageData, media_url: e.target.value })}
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    accept={
+                      testMessageData.type === 'image' ? 'image/*' :
+                      testMessageData.type === 'video' ? 'video/*' :
+                      testMessageData.type === 'audio' ? 'audio/*' :
+                      '*/*'
+                    }
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={handleUploadClick}
+                    disabled={isUploading}
+                    title="Upload de arquivo"
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             )}
 
