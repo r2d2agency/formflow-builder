@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
 
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
@@ -75,6 +76,26 @@ const runMigrations = async () => {
       console.warn('[startup] Failed to add internal_api_url column:', e.message);
     }
     console.log('[startup] Migrations checked');
+
+    // Seed default admin user if no users exist
+    try {
+      const userCount = await pool.query('SELECT count(*) FROM users');
+      if (parseInt(userCount.rows[0].count) === 0) {
+        console.log('[startup] No users found. Creating default admin...');
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash('admin', salt);
+        
+        await pool.query(
+          `INSERT INTO users (email, password_hash, name, role)
+           VALUES ($1, $2, $3, $4)`,
+          ['admin@admin.com', hash, 'Admin', 'admin']
+        );
+        console.log('[startup] Default admin created: admin@admin.com / admin');
+      }
+    } catch (e) {
+      console.warn('[startup] Failed to seed admin user:', e.message);
+    }
+
   } catch (err) {
     console.error('[startup] Migration error:', err.message);
   }
