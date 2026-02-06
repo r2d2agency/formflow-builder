@@ -3,8 +3,8 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// Helper to normalize API URL (remove trailing slash)
-const normalizeUrl = (url) => url ? url.replace(/\/+$/, '') : '';
+// Helper to normalize API URL (remove trailing slash and spaces)
+const normalizeUrl = (url) => url ? url.trim().replace(/\/+$/, '') : '';
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
@@ -165,7 +165,8 @@ router.post('/:id/test', async (req, res) => {
           method: attempt.method,
           headers: {
             'apikey': instance.api_key,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Connection': 'close'
           },
         });
 
@@ -290,6 +291,7 @@ router.post('/:id/send-test', async (req, res) => {
         headers: {
           'Content-Type': 'application/json',
           'apikey': instance.api_key,
+          'Connection': 'close'
         },
         body: JSON.stringify(payload),
       });
@@ -321,12 +323,16 @@ router.post('/:id/send-test', async (req, res) => {
       }
     } catch (fetchError) {
       console.error('[Evolution] Fetch error:', fetchError);
+      if (fetchError.cause) {
+        console.error('[Evolution] Fetch error cause:', fetchError.cause);
+      }
       res.status(400).json({ 
         success: false, 
         error: 'Não foi possível conectar à Evolution API para envio: ' + fetchError.message,
         details: {
           code: fetchError.cause?.code || null,
           message: fetchError.message,
+          cause: fetchError.cause,
           used_url: endpoint,
         },
       });
