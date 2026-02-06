@@ -23,10 +23,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/evolution-instances/:id
-router.get('/:id', async (reqteste-formflow-backend.exf0ty.easypanel.host/api/evolution-instances/83c2c67a-ca03-4869-8303-74b82371c291:1  Failed to load resource: the server responded with a status of 500 ()
-index-Dysx1BUH.js:437 Uncaught (in promise) Error: Erro ao atualizar instância: column "internal_api_url" of relation "evolution_instances" does not exist
-    at Object.mutationFn (index-Dysx1BUH.js:437:47738)
-, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
