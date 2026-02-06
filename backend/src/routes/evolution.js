@@ -49,12 +49,35 @@ const createEvolutionService = (instance) => {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || `HTTP Error ${response.status}`);
+        // Log detailed error from API if available
+        console.warn(`[Evolution] API Error ${response.status}:`, data);
+        const errorMessage = data.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP Error ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
-      console.error(`[Evolution] Error requesting ${url}:`, error.message);
+      // Enhanced error logging
+      const errorDetails = {
+        message: error.message,
+        cause: error.cause,
+        code: error.code, // Node.js network error code (e.g. ECONNREFUSED)
+        url: url
+      };
+      console.error(`[Evolution] Error requesting ${url}:`, JSON.stringify(errorDetails));
+      
+      // Enrich error object for callers
+      error.details = errorDetails;
+      
+      // Translate common network errors
+      if (error.cause && error.cause.code === 'ECONNREFUSED') {
+        error.message = `Conexão recusada em ${baseUrl}. Verifique se a URL está correta e o servidor está rodando.`;
+      } else if (error.cause && error.cause.code === 'ENOTFOUND') {
+        error.message = `Não foi possível encontrar o servidor em ${baseUrl}. Verifique o DNS ou IP.`;
+      } else if (error.message.includes('fetch failed')) {
+         error.message = `Falha na conexão com ${baseUrl}. Verifique firewall, URL incorreta ou servidor offline. (Erro original: ${error.message})`;
+      }
+
       throw error;
     }
   };
@@ -273,10 +296,16 @@ router.post('/:id/test', async (req, res) => {
           details: info
         });
       } catch (innerError) {
+        // Use the most relevant error message
+        const finalError = innerError.message || error.message;
         res.status(400).json({
           success: false,
           error: 'Falha ao conectar com a Evolution API',
-          details: { message: error.message }
+          details: { 
+             message: finalError,
+             original_error: error.message,
+             tech_details: innerError.details || error.details 
+          }
         });
       }
     }
@@ -323,7 +352,10 @@ router.post('/:id/send-test', async (req, res) => {
       res.status(400).json({ 
         success: false, 
         error: error.message || 'Erro ao enviar mensagem',
-        details: error
+        details: {
+          message: error.message,
+          tech_details: error.details
+        }
       });
     }
   } catch (error) {
