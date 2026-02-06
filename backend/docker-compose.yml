@@ -44,7 +44,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       
       # CORS - Frontend URL
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://id-preview--1adaa66b-6671-409e-9fcc-b2892d6994a7.lovable.app}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       
     ports:
       - "3001:3001"

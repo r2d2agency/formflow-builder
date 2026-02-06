@@ -83,7 +83,10 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Update evolution instance error:', error);
-    res.status(500).json({ success: false, error: 'Erro ao atualizar instância' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao atualizar instância: ' + (error.message || 'Erro desconhecido') 
+    });
   }
 });
 
@@ -243,18 +246,20 @@ router.post('/:id/send-test', async (req, res) => {
     // Clean phone number (remove non-digits)
     const cleanPhone = phone.replace(/\D/g, '');
 
+    const encodedName = encodeURIComponent(instance.name);
+
     let endpoint;
     let payload;
 
     if (type === 'text') {
-      endpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
+      endpoint = `${effectiveUrl}/message/sendText/${encodedName}`;
       payload = {
         number: cleanPhone,
         textMessage: { text: message },
         options: { delay: 1200, presence: "composing" }
       };
     } else if (type === 'audio') {
-      endpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${instance.name}`;
+      endpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${encodedName}`;
       payload = {
         number: cleanPhone,
         audio: media_url,
@@ -262,7 +267,7 @@ router.post('/:id/send-test', async (req, res) => {
       };
     } else {
       // image, video, document
-      endpoint = `${effectiveUrl}/message/sendMedia/${instance.name}`;
+      endpoint = `${effectiveUrl}/message/sendMedia/${encodedName}`;
       payload = {
         number: cleanPhone,
         mediatype: type === 'document' ? 'document' : type,
@@ -276,7 +281,7 @@ router.post('/:id/send-test', async (req, res) => {
     console.log('[Evolution] Sending test message...');
     console.log('[Evolution] Type:', type);
     console.log('[Evolution] Endpoint:', endpoint);
-    console.log('[Evolution] Phone:', cleanPhone);
+    console.log('[Evolution] Payload:', JSON.stringify(payload, null, 2));
 
     try {
       const response = await fetch(endpoint, {
@@ -288,10 +293,18 @@ router.post('/:id/send-test', async (req, res) => {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        data = { error: 'Non-JSON response', body: responseText };
+      }
+
+      console.log(`[Evolution] Response Status: ${response.status}`);
+      console.log('[Evolution] Response Body:', data);
 
       if (response.ok) {
-        console.log('[Evolution] Send success:', data);
         res.json({ 
           success: true, 
           message: 'Mensagem enviada com sucesso', 
@@ -299,18 +312,17 @@ router.post('/:id/send-test', async (req, res) => {
           used_url: endpoint 
         });
       } else {
-        console.error('[Evolution] API error response:', data);
         res.status(400).json({ 
           success: false, 
-          error: data.message || data.error || 'Erro retornado pela Evolution API',
+          error: data.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || 'Erro retornado pela Evolution API',
           details: data
         });
       }
     } catch (fetchError) {
-      console.error('[Evolution] Fetch error:', fetchError.cause || fetchError.message);
+      console.error('[Evolution] Fetch error:', fetchError);
       res.status(400).json({ 
         success: false, 
-        error: 'Não foi possível conectar à Evolution API para envio',
+        error: 'Não foi possível conectar à Evolution API para envio: ' + fetchError.message,
         details: {
           code: fetchError.cause?.code || null,
           message: fetchError.message,
