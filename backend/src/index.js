@@ -68,18 +68,12 @@ app.locals.pool = pool;
 const runMigrations = async () => {
   try {
     // Add internal_api_url to evolution_instances if missing
-    await pool.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'evolution_instances' AND column_name = 'internal_api_url'
-        ) THEN
-          ALTER TABLE evolution_instances ADD COLUMN internal_api_url VARCHAR(500);
-          RAISE NOTICE 'Added internal_api_url column to evolution_instances';
-        END IF;
-      END $$;
-    `);
+    try {
+      await pool.query('ALTER TABLE evolution_instances ADD COLUMN IF NOT EXISTS internal_api_url VARCHAR(500)');
+      console.log('[startup] Checked/Added internal_api_url column');
+    } catch (e) {
+      console.warn('[startup] Failed to add internal_api_url column:', e.message);
+    }
     console.log('[startup] Migrations checked');
   } catch (err) {
     console.error('[startup] Migration error:', err.message);
@@ -96,7 +90,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Build version - update this when deploying
-const BUILD_VERSION = '2.1.0';
+const BUILD_VERSION = '2.1.2';
 const BUILD_DATE = '2025-02-05T12:00:00Z';
 
 // Health check
