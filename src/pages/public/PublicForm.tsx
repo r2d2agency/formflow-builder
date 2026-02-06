@@ -24,6 +24,22 @@ import { cn } from '@/lib/utils';
 import MaskedInput from '@/components/forms/MaskedInput';
 import WhatsAppFloatButton from '@/components/forms/WhatsAppFloatButton';
 
+// Helper to get cookie value
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+};
+
+// Helper to generate UUID v4
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 // Helper to apply custom colors
 const useCustomStyles = (form: Form | undefined) => {
   const primaryColor = form?.settings?.primary_color || '#1e40af';
@@ -907,9 +923,35 @@ const PublicForm: React.FC = () => {
   // Check if embed mode
   const isEmbed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
 
-  // Inject custom head/body code for domain verification (Meta, Google, etc.)
+  // Inject custom head/body code for domain verification and Pixel
   useEffect(() => {
     if (!form?.settings) return;
+
+    // Initialize Facebook Pixel if configured
+    if (form.settings.facebook_pixel) {
+      // @ts-ignore
+      !function(f,b,e,v,n,t,s)
+      // @ts-ignore
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      // @ts-ignore
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      // @ts-ignore
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      // @ts-ignore
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      // @ts-ignore
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      // @ts-ignore
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      
+      // @ts-ignore
+      window.fbq('init', form.settings.facebook_pixel);
+      
+      const eventId = generateUUID();
+      // @ts-ignore
+      window.fbq('track', 'PageView', {}, { eventID: eventId });
+    }
 
     const { custom_head_code, custom_body_code } = form.settings;
 
@@ -985,11 +1027,31 @@ const PublicForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      // Prepare tracking data (Facebook CAPI)
+      const tracking = {
+        fbp: getCookie('_fbp'),
+        fbc: getCookie('_fbc'),
+        event_id: generateUUID(),
+      };
+
+      // Fire Client-side Pixel
+      if (form?.settings?.facebook_pixel) {
+        // @ts-ignore
+        if (window.fbq) {
+           // @ts-ignore
+           window.fbq('track', 'Lead', {
+             content_name: form.name,
+             content_category: 'Form Submission',
+           }, { eventID: tracking.event_id });
+        }
+      }
+
       const response = await apiService.post(
         API_CONFIG.ENDPOINTS.SUBMIT_FORM(slug || ''),
         { 
           data,
           partial_lead_id: getPartialLeadId(), // Link to partial lead if exists
+          tracking, // Send tracking data to backend
         }
       );
 

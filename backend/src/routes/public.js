@@ -44,7 +44,7 @@ const logIntegration = async (pool, formId, leadId, type, status, payload, respo
 };
 
 // Async function to process integrations (Fire and Forget)
-const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool) => {
+const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking = {}) => {
   const settings = form.settings || {};
   console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}`);
   const integrations = [];
@@ -473,6 +473,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           if (nameParts.length > 1) userData.ln = [hashData(nameParts[nameParts.length - 1].toLowerCase())];
         }
 
+        // Add cookies if available (Crucial for Match Quality)
+        if (tracking.fbp) userData.fbp = tracking.fbp;
+        if (tracking.fbc) userData.fbc = tracking.fbc;
+
         userData.client_ip_address = ipAddress;
         userData.client_user_agent = userAgent;
         console.log('[Facebook] Processing CAPI with UserData keys:', Object.keys(userData));
@@ -483,6 +487,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
             event_time: Math.floor(Date.now() / 1000),
             action_source: 'website',
             event_source_url: `${reqOrigin}/f/${form.slug}`,
+            event_id: tracking.event_id, // Deduplication key
             user_data: userData,
             custom_data: {
               form_name: form.name,
@@ -712,10 +717,11 @@ router.post('/forms/:slug/submit', async (req, res) => {
       lead = leadResult.rows[0];
     }
     const settings = form.settings || {};
+    const tracking = req.body.tracking || {}; // Get tracking data
 
     // Execute integrations asynchronously (Fire and Forget)
     const reqOrigin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
-    processIntegrations(form, lead, data, ipAddress, userAgent, reqOrigin, pool).catch(err => {
+    processIntegrations(form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking).catch(err => {
       console.error('Error processing integrations:', err);
     });
 
