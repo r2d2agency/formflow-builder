@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIntegrationLogs, IntegrationLog } from '@/hooks/useIntegrationLogs';
-import { Activity, Search, Eye, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Activity, Search, Eye, AlertCircle, CheckCircle2, Webhook, MessageSquare, Share2, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,8 +53,19 @@ const IntegrationLogsPage: React.FC = () => {
   };
 
   const getIntegrationIcon = (type: string) => {
-    // Simple icon mapping based on type string
-    return <Activity className="h-4 w-4" />;
+    switch (type) {
+      case 'webhook':
+        return <Webhook className="h-4 w-4 text-blue-500" />;
+      case 'whatsapp':
+      case 'whatsapp_global':
+        return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case 'facebook_capi':
+        return <Share2 className="h-4 w-4 text-indigo-500" />;
+      case 'rd_station':
+        return <Database className="h-4 w-4 text-orange-500" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-500" />;
+    }
   };
 
   const formatDate = (dateString: string) => {

@@ -48,158 +48,175 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
   const integrations = [];
 
   // 1. Webhook
-  if (settings.webhook_enabled && settings.webhook_url) {
-    integrations.push((async () => {
-      const payload = {
-        form_id: form.id,
-        form_name: form.name,
-        form_slug: form.slug,
-        lead_id: lead.id,
-        data,
-        submitted_at: lead.created_at,
-        source: lead.source,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-      };
-      try {
-        console.log('[Webhook] Sending...');
-        const response = await fetch(settings.webhook_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        
-        let responseData = null;
-        try { responseData = await response.text(); } catch (e) {}
-        
-        if (response.ok) {
-           console.log('[Webhook] Sent successfully');
-           await logIntegration(pool, form.id, lead.id, 'webhook', 'success', payload, { status: response.status, body: responseData });
-        } else {
-           throw new Error(`HTTP ${response.status}: ${responseData}`);
+  if (settings.webhook_enabled) {
+    if (!settings.webhook_url) {
+      console.warn('[Webhook] Enabled but URL missing');
+      await logIntegration(pool, form.id, lead.id, 'webhook', 'error', {}, null, 'Webhook ativado mas URL não configurada');
+    } else {
+      integrations.push((async () => {
+        const payload = {
+          form_id: form.id,
+          form_name: form.name,
+          form_slug: form.slug,
+          lead_id: lead.id,
+          data,
+          submitted_at: lead.created_at,
+          source: lead.source,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        };
+        try {
+          console.log('[Webhook] Sending...');
+          const response = await fetch(settings.webhook_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          
+          let responseData = null;
+          try { responseData = await response.text(); } catch (e) {}
+          
+          if (response.ok) {
+             console.log('[Webhook] Sent successfully');
+             await logIntegration(pool, form.id, lead.id, 'webhook', 'success', payload, { status: response.status, body: responseData });
+          } else {
+             throw new Error(`HTTP ${response.status}: ${responseData}`);
+          }
+        } catch (error) {
+          console.error('[Webhook] Error:', error.message);
+          await logIntegration(pool, form.id, lead.id, 'webhook', 'error', payload, null, error.message);
         }
-      } catch (error) {
-        console.error('[Webhook] Error:', error.message);
-        await logIntegration(pool, form.id, lead.id, 'webhook', 'error', payload, null, error.message);
-      }
-    })());
+      })());
+    }
   }
 
   // 2. WhatsApp Notification (Admin & Client)
-  if (settings.whatsapp_notification && settings.evolution_instance_id) {
-    integrations.push((async () => {
-      try {
-        const instanceResult = await pool.query(
-          'SELECT * FROM evolution_instances WHERE id = $1 AND is_active = true',
-          [settings.evolution_instance_id]
-        );
+  if (settings.whatsapp_notification) {
+    if (!settings.evolution_instance_id) {
+      console.warn('[WhatsApp] Enabled but Instance ID missing');
+      await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, 'WhatsApp ativado mas instância não selecionada');
+    } else {
+      integrations.push((async () => {
+        try {
+          const instanceResult = await pool.query(
+            'SELECT * FROM evolution_instances WHERE id = $1 AND is_active = true',
+            [settings.evolution_instance_id]
+          );
 
-        if (instanceResult.rows.length === 0) {
-          console.log('[WhatsApp] Instance not found or inactive');
-          return;
-        }
-
-        const instance = instanceResult.rows[0];
-        const effectiveUrl = getEffectiveApiUrl(instance);
-        
-        // --- Send to Admin ---
-        const targetNumber = settings.whatsapp_target_number || instance.default_number;
-        if (targetNumber) {
-          const cleanNumber = targetNumber.replace(/\D/g, '');
-          console.log(`[WhatsApp] Sending Admin notification to ${cleanNumber}`);
-          
-          let message = settings.whatsapp_message || '🎉 Novo lead!\n\nFormulário: {{form_name}}\n\n{{dados}}';
-          if (typeof message === 'string') {
-             // Replace variables
-            message = message.replace(/\{\{form_name\}\}/g, form.name);
-            message = message.replace(/\{\{formulario\}\}/g, form.name);
-            for (const [key, value] of Object.entries(data)) {
-              const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-              message = message.replace(regex, String(value || ''));
-            }
-            const dataEntries = Object.entries(data).map(([key, value]) => `${key}: ${value}`).join('\n');
-            message = message.replace(/\{\{dados\}\}/g, dataEntries);
-
-            const adminPayload = {
-              number: cleanNumber,
-              text: message,
-              delay: 1200,
-              linkPreview: false
-            };
-
-            try {
-              const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': instance.api_key,
-                },
-                body: JSON.stringify(adminPayload),
-              });
-              const resData = await res.json().catch(() => ({}));
-              if (res.ok) {
-                console.log(`[WhatsApp] Admin notification sent to ${cleanNumber}`);
-                await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'success', adminPayload, resData);
-              } else {
-                throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
-              }
-            } catch (err) {
-              console.error(`[WhatsApp] Admin send error:`, err.message);
-              await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'error', adminPayload, null, err.message);
-            }
+          if (instanceResult.rows.length === 0) {
+            console.log('[WhatsApp] Instance not found or inactive');
+            await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, 'Instância Evolution API não encontrada ou inativa');
+            return;
           }
-        }
 
-        // --- Send to Client (Lead) ---
-        // Try to find client phone
-        const clientPhone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular', 'mobile']);
-        if (clientPhone && settings.whatsapp_lead_notification) {
-          const cleanClientPhone = String(clientPhone).replace(/\D/g, '');
-          // Basic validation for Brazilian numbers (at least 10 digits: DDD + Number)
-          if (cleanClientPhone.length >= 10) {
-             console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
-             
-             let clientMessage = settings.whatsapp_lead_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
-             
-             // Replace variables
-             clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
-             clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
-             
-             const clientPayload = {
-                number: cleanClientPhone,
-                text: clientMessage,
-                delay: 2000,
+          const instance = instanceResult.rows[0];
+          const effectiveUrl = getEffectiveApiUrl(instance);
+          
+          // --- Send to Admin ---
+          const targetNumber = settings.whatsapp_target_number || instance.default_number;
+          if (targetNumber) {
+            const cleanNumber = targetNumber.replace(/\D/g, '');
+            console.log(`[WhatsApp] Sending Admin notification to ${cleanNumber}`);
+            
+            let message = settings.whatsapp_message || '🎉 Novo lead!\n\nFormulário: {{form_name}}\n\n{{dados}}';
+            if (typeof message === 'string') {
+               // Replace variables
+              message = message.replace(/\{\{form_name\}\}/g, form.name);
+              message = message.replace(/\{\{formulario\}\}/g, form.name);
+              for (const [key, value] of Object.entries(data)) {
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+                message = message.replace(regex, String(value || ''));
+              }
+              const dataEntries = Object.entries(data).map(([key, value]) => `${key}: ${value}`).join('\n');
+              message = message.replace(/\{\{dados\}\}/g, dataEntries);
+
+              const adminPayload = {
+                number: cleanNumber,
+                text: message,
+                delay: 1200,
                 linkPreview: false
-             };
+              };
 
-             try {
-               const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+              try {
+                const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                     'apikey': instance.api_key,
                   },
-                  body: JSON.stringify(clientPayload),
+                  body: JSON.stringify(adminPayload),
                 });
                 const resData = await res.json().catch(() => ({}));
                 if (res.ok) {
-                   console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
-                   await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', clientPayload, resData);
+                  console.log(`[WhatsApp] Admin notification sent to ${cleanNumber}`);
+                  await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'success', adminPayload, resData);
                 } else {
-                   throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
+                  throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
                 }
-             } catch (err) {
-                console.error(`[WhatsApp] Client send error:`, err.message);
-                await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', clientPayload, null, err.message);
+              } catch (err) {
+                console.error(`[WhatsApp] Admin send error:`, err.message);
+                await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'error', adminPayload, null, err.message);
+              }
+            }
+          } else {
+             // Log warning if no target number for admin
+             if (!settings.whatsapp_lead_notification) {
+                 await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'error', {}, null, 'Nenhum número de destino configurado para notificação admin');
              }
           }
-        }
 
-      } catch (error) {
-        console.error('[WhatsApp] Global Error:', error.message);
-        await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, error.message);
-      }
-    })());
+          // --- Send to Client (Lead) ---
+          // Try to find client phone
+          const clientPhone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular', 'mobile']);
+          if (clientPhone && settings.whatsapp_lead_notification) {
+            const cleanClientPhone = String(clientPhone).replace(/\D/g, '');
+            // Basic validation for Brazilian numbers (at least 10 digits: DDD + Number)
+            if (cleanClientPhone.length >= 10) {
+               console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
+               
+               let clientMessage = settings.whatsapp_lead_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               
+               // Replace variables
+               clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
+               clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
+               
+               const clientPayload = {
+                  number: cleanClientPhone,
+                  text: clientMessage,
+                  delay: 2000,
+                  linkPreview: false
+               };
+
+               try {
+                 const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'apikey': instance.api_key,
+                    },
+                    body: JSON.stringify(clientPayload),
+                  });
+                  const resData = await res.json().catch(() => ({}));
+                  if (res.ok) {
+                     console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
+                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', clientPayload, resData);
+                  } else {
+                     throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
+                  }
+               } catch (err) {
+                  console.error(`[WhatsApp] Client send error:`, err.message);
+                  await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', clientPayload, null, err.message);
+               }
+            } else {
+                await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { phone: clientPhone }, null, 'Número de telefone do lead inválido ou curto demais');
+            }
+          }
+        } catch (error) {
+          console.error('[WhatsApp] Global Error:', error.message);
+          await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, error.message);
+        }
+      })());
+    }
   }
 
   // 3. Facebook Conversions API
