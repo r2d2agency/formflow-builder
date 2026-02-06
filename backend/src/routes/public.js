@@ -2,6 +2,13 @@ const express = require('express');
 
 const router = express.Router();
 
+// Helper to normalize API URL (remove trailing slash)
+const normalizeUrl = (url) => url ? url.replace(/\/+$/, '') : '';
+
+// Helper to get the effective API URL (internal if available, otherwise public)
+const getEffectiveApiUrl = (instance) => {
+  return normalizeUrl(instance.internal_api_url || instance.api_url);
+};
 // POST /api/public/forms/:slug/partial - Save partial lead data progressively
 router.post('/forms/:slug/partial', async (req, res) => {
   try {
@@ -182,8 +189,9 @@ router.post('/forms/:slug/submit', async (req, res) => {
             console.error('[WhatsApp] No target phone number configured');
           } else {
             const cleanNumber = targetNumber.replace(/\D/g, '');
+            const effectiveUrl = getEffectiveApiUrl(instance);
             console.log('[WhatsApp] Sending to:', cleanNumber);
-            console.log('[WhatsApp] API URL:', instance.api_url);
+            console.log('[WhatsApp] API URL (effective):', effectiveUrl);
             console.log('[WhatsApp] Instance name:', instance.name);
             
             // Check if whatsapp_message is the new format (object with items) or old format (string)
@@ -220,15 +228,15 @@ router.post('/forms/:slug/submit', async (req, res) => {
                     .join('\n');
                   text = text.replace(/\{\{dados\}\}/g, dataEntries);
                   
-                  apiEndpoint = `${instance.api_url}/message/sendText/${instance.name}`;
+                  apiEndpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
                   body = { number: cleanNumber, textMessage: { text } };
                   
                 } else if (item.type === 'audio') {
-                  apiEndpoint = `${instance.api_url}/message/sendWhatsAppAudio/${instance.name}`;
+                  apiEndpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${instance.name}`;
                   body = { number: cleanNumber, audio: item.content };
                   
                 } else if (item.type === 'video' || item.type === 'document') {
-                  apiEndpoint = `${instance.api_url}/message/sendMedia/${instance.name}`;
+                  apiEndpoint = `${effectiveUrl}/message/sendMedia/${instance.name}`;
                   body = {
                     number: cleanNumber,
                     mediatype: item.type === 'video' ? 'video' : 'document',
@@ -275,7 +283,7 @@ router.post('/forms/:slug/submit', async (req, res) => {
               message = message.replace(/\{\{dados\}\}/g, dataEntries);
               
               console.log('[WhatsApp] Sending simple text message...');
-              const response = await fetch(`${instance.api_url}/message/sendText/${instance.name}`, {
+              const response = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

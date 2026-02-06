@@ -143,6 +143,7 @@ export interface EvolutionInstance {
   id: string;
   name: string;
   api_url: string;
+  internal_api_url?: string; // URL/IP interno para uso no backend (bypass DNS)
   api_key: string;
   default_number?: string;
   is_active: boolean;
