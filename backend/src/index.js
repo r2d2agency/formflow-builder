@@ -17,6 +17,7 @@ const settingsRoutes = require('./routes/settings');
 const uploadsRoutes = require('./routes/uploads');
 const linksRoutes = require('./routes/links');
 const diagnosticsRoutes = require('./routes/diagnostics');
+const logsRoutes = require('./routes/logs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -103,6 +104,26 @@ const runMigrations = async () => {
     } catch (e) {
       console.warn('[startup] Failed to add internal_api_url column:', e.message);
     }
+    // 3. Create integration_logs table if missing
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS integration_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          form_id UUID REFERENCES forms(id) ON DELETE SET NULL,
+          lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+          integration_type VARCHAR(50) NOT NULL,
+          status VARCHAR(20) NOT NULL,
+          payload JSONB,
+          response JSONB,
+          error_message TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `);
+      console.log('[startup] Checked/Created integration_logs table');
+    } catch (e) {
+      console.warn('[startup] Failed to create integration_logs table:', e.message);
+    }
+
     console.log('[startup] Migrations checked');
 
     // Seed default admin user if no users exist
@@ -196,6 +217,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/links', linksRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
+app.use('/api/logs', logsRoutes);
 app.use('/l', linksRoutes); // Public redirect route
 
 app.use((err, req, res, next) => {

@@ -24,6 +24,7 @@ import Settings from "./pages/admin/Settings";
 import BrandingPage from "./pages/admin/BrandingPage";
 import LinksList from "./pages/admin/LinksList";
 import LinkStats from "./pages/admin/LinkStats";
+import IntegrationLogsPage from "./pages/admin/IntegrationLogsPage";
 
 const queryClient = new QueryClient();
 
@@ -134,6 +135,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <LinkStats />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/integrations-logs"
+              element={
+                <ProtectedRoute>
+                  <IntegrationLogsPage />
                 </ProtectedRoute>
               }
             />

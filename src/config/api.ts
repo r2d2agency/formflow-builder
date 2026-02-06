@@ -54,6 +54,9 @@ export const API_CONFIG = {
     // Short Links
     LINKS: '/links',
     LINK_BY_ID: (id: string) => `/links/${id}`,
+
+    // Integration Logs
+    INTEGRATION_LOGS: '/logs/integrations',
   },
 };
 

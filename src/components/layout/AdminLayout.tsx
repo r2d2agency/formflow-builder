@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Palette,
   Link2,
+  Activity,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ const navigation = [
   { name: 'Formulários', href: '/admin/forms', icon: FileText },
   { name: 'Leads', href: '/admin/leads', icon: Users },
   { name: 'Links', href: '/admin/links', icon: Link2 },
+  { name: 'Logs de Integração', href: '/admin/integrations-logs', icon: Activity },
   { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
   { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare },
   { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },

@@ -25,6 +25,22 @@ const findField = (data, searchTerms) => {
   return entry ? entry[1] : null;
 };
 
+// Helper to log integration results
+const logIntegration = async (pool, formId, leadId, type, status, payload, response, errorMessage = null) => {
+  try {
+    // Ensure payload/response are objects before stringifying if needed, 
+    // but pg client handles objects for JSONB columns automatically if not stringified.
+    // However, to be safe and consistent with current code style:
+    await pool.query(
+      `INSERT INTO integration_logs (form_id, lead_id, integration_type, status, payload, response, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [formId, leadId, type, status, payload, response, errorMessage]
+    );
+  } catch (err) {
+    console.error(`[Logs] Failed to save ${type} log:`, err.message);
+  }
+};
+
 // Async function to process integrations (Fire and Forget)
 const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool) => {
   const settings = form.settings || {};
@@ -34,26 +50,37 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
   // 1. Webhook
   if (settings.webhook_enabled && settings.webhook_url) {
     integrations.push((async () => {
+      const payload = {
+        form_id: form.id,
+        form_name: form.name,
+        form_slug: form.slug,
+        lead_id: lead.id,
+        data,
+        submitted_at: lead.created_at,
+        source: lead.source,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      };
       try {
         console.log('[Webhook] Sending...');
-        await fetch(settings.webhook_url, {
+        const response = await fetch(settings.webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            form_id: form.id,
-            form_name: form.name,
-            form_slug: form.slug,
-            lead_id: lead.id,
-            data,
-            submitted_at: lead.created_at,
-            source: lead.source,
-            ip_address: ipAddress,
-            user_agent: userAgent,
-          }),
+          body: JSON.stringify(payload),
         });
-        console.log('[Webhook] Sent successfully');
+        
+        let responseData = null;
+        try { responseData = await response.text(); } catch (e) {}
+        
+        if (response.ok) {
+           console.log('[Webhook] Sent successfully');
+           await logIntegration(pool, form.id, lead.id, 'webhook', 'success', payload, { status: response.status, body: responseData });
+        } else {
+           throw new Error(`HTTP ${response.status}: ${responseData}`);
+        }
       } catch (error) {
         console.error('[Webhook] Error:', error.message);
+        await logIntegration(pool, form.id, lead.id, 'webhook', 'error', payload, null, error.message);
       }
     })());
   }
@@ -93,20 +120,33 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
             const dataEntries = Object.entries(data).map(([key, value]) => `${key}: ${value}`).join('\n');
             message = message.replace(/\{\{dados\}\}/g, dataEntries);
 
-            await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': instance.api_key,
-              },
-              body: JSON.stringify({
-                number: cleanNumber,
-                text: message,
-                delay: 1200,
-                linkPreview: false
-              }),
-            });
-            console.log(`[WhatsApp] Admin notification sent to ${cleanNumber}`);
+            const adminPayload = {
+              number: cleanNumber,
+              text: message,
+              delay: 1200,
+              linkPreview: false
+            };
+
+            try {
+              const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': instance.api_key,
+                },
+                body: JSON.stringify(adminPayload),
+              });
+              const resData = await res.json().catch(() => ({}));
+              if (res.ok) {
+                console.log(`[WhatsApp] Admin notification sent to ${cleanNumber}`);
+                await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'success', adminPayload, resData);
+              } else {
+                throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
+              }
+            } catch (err) {
+              console.error(`[WhatsApp] Admin send error:`, err.message);
+              await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'error', adminPayload, null, err.message);
+            }
           }
         }
 
@@ -125,25 +165,39 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
              clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
              clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
              
-             await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': instance.api_key,
-                },
-                body: JSON.stringify({
-                  number: cleanClientPhone,
-                  text: clientMessage,
-                  delay: 2000,
-                  linkPreview: false
-                }),
-              });
-             console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
+             const clientPayload = {
+                number: cleanClientPhone,
+                text: clientMessage,
+                delay: 2000,
+                linkPreview: false
+             };
+
+             try {
+               const res = await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': instance.api_key,
+                  },
+                  body: JSON.stringify(clientPayload),
+                });
+                const resData = await res.json().catch(() => ({}));
+                if (res.ok) {
+                   console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
+                   await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', clientPayload, resData);
+                } else {
+                   throw new Error(resData.message || JSON.stringify(resData) || `HTTP ${res.status}`);
+                }
+             } catch (err) {
+                console.error(`[WhatsApp] Client send error:`, err.message);
+                await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', clientPayload, null, err.message);
+             }
           }
         }
 
       } catch (error) {
-        console.error('[WhatsApp] Error:', error.message);
+        console.error('[WhatsApp] Global Error:', error.message);
+        await logIntegration(pool, form.id, lead.id, 'whatsapp_global', 'error', {}, null, error.message);
       }
     })());
   }
@@ -201,12 +255,15 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         if (!fbResponse.ok) {
           const fbErr = await fbResponse.json();
           console.error('[Facebook] API Error:', JSON.stringify(fbErr));
+          await logIntegration(pool, form.id, lead.id, 'facebook', 'error', eventData, fbErr, fbErr.error?.message);
         } else {
           const fbRes = await fbResponse.json();
           console.log('[Facebook] Sent successfully. ID:', fbRes.fbtrace_id || 'ok');
+          await logIntegration(pool, form.id, lead.id, 'facebook', 'success', eventData, fbRes);
         }
       } catch (error) {
         console.error('[Facebook] Error:', error.message);
+        await logIntegration(pool, form.id, lead.id, 'facebook', 'error', {}, null, error.message);
       }
     })());
   }
@@ -244,11 +301,15 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         if (!rdResponse.ok) {
           const rdErr = await rdResponse.json();
           console.error('[RD Station] API Error:', JSON.stringify(rdErr));
+          await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', payload, rdErr, rdErr.errors?.[0]?.message);
         } else {
           console.log('[RD Station] Sent successfully');
+          const rdRes = await rdResponse.json().catch(() => ({}));
+          await logIntegration(pool, form.id, lead.id, 'rdstation', 'success', payload, rdRes);
         }
       } catch (error) {
         console.error('[RD Station] Error:', error.message);
+        await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', {}, null, error.message);
       }
     })());
   }
