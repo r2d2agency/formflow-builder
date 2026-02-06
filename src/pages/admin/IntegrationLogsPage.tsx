@@ -117,7 +117,7 @@ const IntegrationLogsPage: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.data.map((log) => (
+                  {data?.logs?.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-medium">{formatDate(log.created_at)}</TableCell>
                       <TableCell>{log.form_name || 'Desconhecido'}</TableCell>
@@ -140,7 +140,7 @@ const IntegrationLogsPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {(!data?.data || data.data.length === 0) && (
+                  {(!data?.logs || data.logs.length === 0) && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhum log encontrado
@@ -165,7 +165,7 @@ const IntegrationLogsPage: React.FC = () => {
                     variant="outline" 
                     size="sm" 
                     onClick={() => setPage(p => p + 1)}
-                    disabled={!data || data.data.length < 20 || isLoading}
+                    disabled={!data || data.logs.length < 20 || isLoading}
                 >
                     Próxima
                 </Button>

@@ -40,12 +40,12 @@ router.get('/integrations', async (req, res) => {
     const countResult = await pool.query('SELECT COUNT(*) FROM integration_logs');
 
     res.json({
-      success: true,
-      data: result.rows,
-      total: parseInt(countResult.rows[0].count),
-      page: Math.floor(offset / limit) + 1,
-      limit: parseInt(limit)
-    });
+              success: true,
+              logs: result.rows,
+              total: parseInt(countResult.rows[0].count),
+              page: Math.floor(offset / limit) + 1,
+              limit: parseInt(limit)
+            });
   } catch (error) {
     console.error('Get integration logs error:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar logs' });

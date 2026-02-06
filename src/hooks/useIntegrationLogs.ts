@@ -17,7 +17,7 @@ export interface IntegrationLog {
 
 interface IntegrationLogsResponse {
   success: boolean;
-  data: IntegrationLog[];
+  logs: IntegrationLog[];
   total: number;
   page: number;
   limit: number;
