@@ -43,6 +43,37 @@ const useCustomStyles = (form: Form | undefined) => {
   } as React.CSSProperties;
 };
 
+// Validation Helper
+const validateField = (field: FormField, value: any): string | null => {
+  // Check required
+  if (field.required) {
+    if (!value || (typeof value === 'string' && !value.trim()) || (Array.isArray(value) && value.length === 0)) {
+      return `O campo "${field.label}" é obrigatório.`;
+    }
+  }
+
+  // If empty and not required, skip format check
+  if (!value) return null;
+
+  // Check formats
+  if (field.type === 'email') {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      return `O campo "${field.label}" deve ser um e-mail válido.`;
+    }
+  }
+
+  if (field.type === 'phone' || field.type === 'whatsapp') {
+     // Remove non-digits
+     const digits = String(value).replace(/\D/g, '');
+     if (digits.length < 10) {
+       return `O campo "${field.label}" deve conter um número de telefone válido (DDD + número).`;
+     }
+  }
+  
+  return null;
+};
+
 // Typeform style - one question at a time with slide animation
 const TypeformRenderer: React.FC<{
   form: Form;
@@ -64,10 +95,11 @@ const TypeformRenderer: React.FC<{
 
   const handleNext = () => {
     if (currentField) {
-      if (currentField.required && !currentValue.toString().trim()) {
+      const error = validateField(currentField, currentValue);
+      if (error) {
         toast({
-          title: 'Campo obrigatório',
-          description: 'Por favor, preencha este campo.',
+          title: 'Atenção',
+          description: error,
           variant: 'destructive',
         });
         return;
@@ -424,15 +456,14 @@ const ChatRenderer: React.FC<{
 
   const handleSend = async () => {
     const currentField = fields[currentIndex];
-    if (!inputValue.trim()) {
-      if (currentField?.required) {
-        toast({
-          title: 'Campo obrigatório',
-          description: 'Por favor, preencha este campo.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const error = validateField(currentField, inputValue);
+    if (error) {
+      toast({
+        title: 'Atenção',
+        description: error,
+        variant: 'destructive',
+      });
+      return;
     }
 
     setMessages((prev) => [...prev, { type: 'user', text: inputValue }]);
@@ -576,12 +607,21 @@ const StandardRenderer: React.FC<{
     
     const fields = form.fields || [];
     for (const field of fields) {
-      if (field.required && !formData[field.label]?.toString().trim()) {
+      const value = formData[field.label];
+      const error = validateField(field, value);
+      
+      if (error) {
         toast({
-          title: 'Campo obrigatório',
-          description: `Por favor, preencha o campo "${field.label}".`,
+          title: 'Atenção',
+          description: error,
           variant: 'destructive',
         });
+        // Find element and scroll to it
+        const element = document.getElementById(`field-${field.id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.focus();
+        }
         return;
       }
     }
@@ -591,11 +631,13 @@ const StandardRenderer: React.FC<{
 
   const renderField = (field: FormField) => {
     const value = formData[field.label] || '';
+    const fieldId = `field-${field.id}`;
 
     switch (field.type) {
       case 'textarea':
         return (
           <Textarea
+            id={fieldId}
             value={value}
             onChange={(e) => handleChange(field.label, e.target.value)}
             onBlur={(e) => handleBlur(field.label, e.target.value)}
@@ -608,6 +650,7 @@ const StandardRenderer: React.FC<{
       case 'whatsapp':
         return (
           <MaskedInput
+            id={fieldId}
             mask="whatsapp"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
@@ -618,6 +661,7 @@ const StandardRenderer: React.FC<{
       case 'phone':
         return (
           <MaskedInput
+            id={fieldId}
             mask="phone"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
@@ -628,6 +672,7 @@ const StandardRenderer: React.FC<{
       case 'email':
         return (
           <MaskedInput
+            id={fieldId}
             mask="email"
             value={value}
             onChange={(val) => handleChange(field.label, val)}
@@ -644,7 +689,7 @@ const StandardRenderer: React.FC<{
               handleBlur(field.label, val);
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger id={fieldId}>
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
             <SelectContent>
@@ -657,6 +702,7 @@ const StandardRenderer: React.FC<{
       case 'radio':
         return (
           <RadioGroup 
+            id={fieldId}
             value={value} 
             onValueChange={(val) => {
               handleChange(field.label, val);
@@ -678,7 +724,7 @@ const StandardRenderer: React.FC<{
       case 'checkbox':
         const selectedValues = Array.isArray(value) ? value : [];
         return (
-          <div className="space-y-2">
+          <div className="space-y-2" id={fieldId} tabIndex={-1}>
             {(field.options || []).map((option, i) => (
               <label
                 key={i}
@@ -703,6 +749,7 @@ const StandardRenderer: React.FC<{
       default:
         return (
           <Input
+            id={fieldId}
             value={value}
             onChange={(e) => handleChange(field.label, e.target.value)}
             onBlur={(e) => handleBlur(field.label, e.target.value)}
