@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 
@@ -224,6 +226,47 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                    return processed;
                };
 
+               // Helper to convert local media URL to Base64
+               const getMediaContent = (url, mimeType) => {
+                   try {
+                       if (!url || typeof url !== 'string') return url;
+                       
+                       // Check if it's a local upload URL (contains /api/uploads/)
+                       if (url.includes('/api/uploads/')) {
+                           const parts = url.split('/api/uploads/');
+                           if (parts.length >= 2) {
+                               const subPath = parts[1]; // e.g., "documents/filename.pdf"
+                               // Handle both forward and backward slashes just in case
+                               const cleanSubPath = subPath.replace(/\\/g, '/');
+                               const pathParts = cleanSubPath.split('/');
+                               
+                               if (pathParts.length >= 2) {
+                                   const type = pathParts[0];
+                                   const filename = pathParts.slice(1).join('/'); // In case filename has slashes (unlikely)
+                                   
+                                   // Use same UPLOAD_DIR logic as uploads.js
+                                   const uploadDir = process.env.UPLOAD_DIR || '/app/uploads';
+                                   const filePath = path.join(uploadDir, type, filename);
+                                   
+                                   if (fs.existsSync(filePath)) {
+                                       console.log(`[WhatsApp] Converting local file to Base64: ${filePath}`);
+                                       const fileBuffer = fs.readFileSync(filePath);
+                                       const base64 = fileBuffer.toString('base64');
+                                       // Return Data URI
+                                       return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
+                                   } else {
+                                       console.warn(`[WhatsApp] Local file not found: ${filePath}`);
+                                   }
+                               }
+                           }
+                       }
+                       return url; // Return original URL if not local or not found
+                   } catch (e) {
+                       console.error('[WhatsApp] Error converting media to Base64:', e.message);
+                       return url;
+                   }
+               };
+
                // Send items sequentially
                for (const [index, item] of itemsToSend.entries()) {
                    try {
@@ -243,11 +286,15 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            payload.text = replaceVariables(item.content);
                        } else if (item.type === 'audio') {
                            endpoint = '/message/sendWhatsAppAudio';
-                           payload.audio = item.content; // URL
+                           // Handle local audio files too
+                           payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3'); 
                        } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                            endpoint = '/message/sendMedia';
                            payload.mediatype = item.type;
-                           payload.media = item.content; // URL
+                           
+                           // Convert to Base64 if local file
+                           payload.media = getMediaContent(item.content, item.mimeType);
+                           
                            if (item.filename) payload.fileName = item.filename;
                            if (item.mimeType) payload.mimetype = item.mimeType;
                            // Some integrations allow caption for media
@@ -402,12 +449,22 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         });
 
         if (!rdResponse.ok) {
-          const rdErr = await rdResponse.json();
+          let rdErr = {};
+          try {
+            const text = await rdResponse.text();
+            try { rdErr = JSON.parse(text); } catch { rdErr = { message: text }; }
+          } catch (e) { rdErr = { message: 'Could not read response body' }; }
+          
           console.error('[RD Station] API Error:', JSON.stringify(rdErr));
-          await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', payload, rdErr, rdErr.errors?.[0]?.message);
+          await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', payload, rdErr, rdErr.errors?.[0]?.message || rdErr.message);
         } else {
           console.log('[RD Station] Sent successfully');
-          const rdRes = await rdResponse.json().catch(() => ({}));
+          let rdRes = {};
+          try {
+            const text = await rdResponse.text();
+            try { rdRes = JSON.parse(text); } catch { rdRes = { message: text }; }
+          } catch (e) { rdRes = { message: 'Empty response' }; }
+          
           await logIntegration(pool, form.id, lead.id, 'rdstation', 'success', payload, rdRes);
         }
       } catch (error) {
