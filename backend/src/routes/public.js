@@ -112,6 +112,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           }
 
           const instance = instanceResult.rows[0];
+          // Ensure no whitespace in credentials
+          instance.name = instance.name.trim();
+          instance.api_key = instance.api_key.trim();
+          instance.api_url = instance.api_url.trim();
+          
           const effectiveUrl = getEffectiveApiUrl(instance);
           
           // --- Send to Admin ---
@@ -320,8 +325,9 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                // Send items sequentially
                for (const [index, item] of itemsToSend.entries()) {
                    try {
-                       // Add delay between messages (start with configured delay, then 2s between items)
-                       const delay = index === 0 ? 2000 : 2000; 
+                       // Add delay between messages (start with configured delay, then 3s between items)
+                       // Increased delay to avoid "No sessions" error or concurrency issues
+                       const delay = index === 0 ? 2000 : 3000; 
                        
                        let endpoint = '/message/sendText';
                        let payload = {
@@ -355,30 +361,58 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            payload.text = replaceVariables(String(item.content || ''));
                        }
 
-                       // Send request
-                       console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to ${cleanClientPhone}`);
+                       // Send request with Retry logic for "SessionError"
+                       let attempts = 0;
+                       let success = false;
+                       const maxAttempts = 2;
                        
-                       const res = await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'apikey': instance.api_key,
-                            },
-                            body: JSON.stringify(payload),
-                        });
-                        
-                        const resData = await res.json().catch(() => ({}));
-                        
-                        if (res.ok) {
-                             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', payload, resData);
-                        } else {
-                             console.error(`[WhatsApp] Item ${index + 1} failed:`, resData);
-                             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', payload, resData, resData.message || 'Error sending item');
-                        }
+                       while (attempts < maxAttempts && !success) {
+                           attempts++;
+                           console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to ${cleanClientPhone} (Attempt ${attempts})`);
+                           
+                           try {
+                               const res = await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'apikey': instance.api_key,
+                                    },
+                                    body: JSON.stringify(payload),
+                                });
+                                
+                                const resData = await res.json().catch(() => ({}));
+                                
+                                if (res.ok) {
+                                     success = true;
+                                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'success', payload, resData);
+                                } else {
+                                     console.error(`[WhatsApp] Item ${index + 1} failed (Attempt ${attempts}):`, resData);
+                                     
+                                     // Check if it's a SessionError, if so, wait and retry
+                                     const isSessionError = resData.response?.message && 
+                                                            (Array.isArray(resData.response.message) 
+                                                                ? resData.response.message.some(m => String(m).includes('SessionError')) 
+                                                                : String(resData.response.message).includes('SessionError'));
+                                     
+                                     if (isSessionError && attempts < maxAttempts) {
+                                         console.log(`[WhatsApp] SessionError detected. Retrying in 5 seconds...`);
+                                         await new Promise(resolve => setTimeout(resolve, 5000));
+                                         continue;
+                                     }
+                                     
+                                     await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', payload, resData, resData.message || 'Error sending item');
+                                }
+                           } catch (reqErr) {
+                               console.error(`[WhatsApp] Request error (Attempt ${attempts}):`, reqErr.message);
+                               if (attempts === maxAttempts) {
+                                   await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { item_index: index, type: item.type }, null, reqErr.message);
+                               }
+                           }
+                       }
                         
                         // Wait a bit before next message if not last
                         if (index < itemsToSend.length - 1) {
-                            await new Promise(resolve => setTimeout(resolve, 1500));
+                            await new Promise(resolve => setTimeout(resolve, 3000));
                         }
 
                    } catch (err) {
