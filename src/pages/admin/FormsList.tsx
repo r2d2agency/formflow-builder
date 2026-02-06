@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useForms, useDeleteForm } from '@/hooks/useForms';
+import { useForms, useDeleteForm, useImportForm, exportForm } from '@/hooks/useForms';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -29,6 +29,8 @@ import {
   Copy,
   Eye,
   ExternalLink,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
@@ -57,7 +59,37 @@ const FormsList: React.FC = () => {
   
   const { data, isLoading, error } = useForms(page, 20);
   const deleteForm = useDeleteForm();
+  const importForm = useImportForm();
   const navigate = useNavigate();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        await importForm.mutateAsync(json);
+      } catch (error) {
+        toast({
+          title: 'Erro ao ler arquivo',
+          description: 'O arquivo selecionado não é um JSON válido ou ocorreu um erro na importação.',
+          variant: 'destructive',
+        });
+      }
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Mock data for demo
   const mockForms: Form[] = [
@@ -132,10 +164,23 @@ const FormsList: React.FC = () => {
               Gerencie seus formulários de captura de leads
             </p>
           </div>
-          <Button onClick={() => navigate('/admin/forms/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Formulário
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".json"
+              onChange={handleFileChange}
+            />
+            <Button variant="outline" onClick={handleImportClick} disabled={importForm.isPending}>
+              <Upload className="mr-2 h-4 w-4" />
+              {importForm.isPending ? 'Importando...' : 'Importar JSON'}
+            </Button>
+            <Button onClick={() => navigate('/admin/forms/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Formulário
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -237,6 +282,10 @@ const FormsList: React.FC = () => {
                             <DropdownMenuItem onClick={() => navigate(`/admin/leads?form=${form.id}`)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver Leads
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => exportForm(form.id, form.slug)}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Exportar JSON
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"

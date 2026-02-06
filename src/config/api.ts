@@ -20,7 +20,9 @@ export const API_CONFIG = {
     
     // Forms
     FORMS: '/forms',
+    FORM_IMPORT: '/forms/import',
     FORM_BY_ID: (id: string) => `/forms/${id}`,
+    FORM_EXPORT: (id: string) => `/forms/${id}/export`,
     FORM_BY_SLUG: (slug: string) => `/public/forms/${slug}`,
     
     // Leads

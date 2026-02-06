@@ -114,6 +114,14 @@ router.post('/', async (req, res) => {
       [name, slug, description, type, JSON.stringify(fields || []), JSON.stringify(settings || {}), is_active ?? true]
     );
 
+    // If regular user, associate the form with them
+    if (req.user.role !== 'admin') {
+      await pool.query(
+        'INSERT INTO user_forms (user_id, form_id) VALUES ($1, $2)',
+        [req.user.id, result.rows[0].id]
+      );
+    }
+
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Create form error:', error);
@@ -121,6 +129,85 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Slug já existe' });
     }
     res.status(500).json({ success: false, error: 'Erro ao criar formulário' });
+  }
+});
+
+// POST /api/forms/import
+router.post('/import', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { name, slug, description, type, fields, settings, is_active } = req.body;
+
+    // Validate required fields
+    if (!name || !slug || !type) {
+      return res.status(400).json({ success: false, error: 'Dados inválidos. Nome, slug e tipo são obrigatórios.' });
+    }
+
+    // Ensure slug is unique by appending timestamp if needed
+    let finalSlug = slug;
+    let slugExists = true;
+    let counter = 0;
+
+    while (slugExists) {
+      const check = await pool.query('SELECT id FROM forms WHERE slug = $1', [finalSlug]);
+      if (check.rows.length === 0) {
+        slugExists = false;
+      } else {
+        counter++;
+        finalSlug = `${slug}-${Date.now()}`;
+      }
+    }
+
+    const result = await pool.query(
+      `INSERT INTO forms (name, slug, description, type, fields, settings, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        name + (counter > 0 ? ' (Importado)' : ''), 
+        finalSlug, 
+        description, 
+        type, 
+        JSON.stringify(fields || []), 
+        JSON.stringify(settings || {}), 
+        is_active ?? false // Default to inactive on import
+      ]
+    );
+
+    // If regular user, associate the form with them
+    if (req.user.role !== 'admin') {
+      await pool.query(
+        'INSERT INTO user_forms (user_id, form_id) VALUES ($1, $2)',
+        [req.user.id, result.rows[0].id]
+      );
+    }
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Import form error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao importar formulário' });
+  }
+});
+
+// GET /api/forms/:id/export
+router.get('/:id/export', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query('SELECT name, slug, description, type, fields, settings, is_active FROM forms WHERE id = $1', [req.params.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Formulário não encontrado' });
+    }
+
+    const formData = result.rows[0];
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${formData.slug}.json"`);
+    
+    res.json(formData);
+  } catch (error) {
+    console.error('Export form error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao exportar formulário' });
   }
 });
 
