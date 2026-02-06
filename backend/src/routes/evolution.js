@@ -10,10 +10,8 @@ const normalizeUrl = (url) => {
 
 // Helper to get effective URL
 const getEffectiveApiUrl = (instance) => {
-  // Prefer internal URL if set (for Docker/local network)
-  if (instance.internal_api_url && instance.internal_api_url.trim()) {
-    return normalizeUrl(instance.internal_api_url);
-  }
+  // Always use the public/main API URL
+  // (Internal URL logic removed as per request)
   return normalizeUrl(instance.api_url);
 };
 
@@ -178,7 +176,7 @@ router.get('/:id/connect', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, api_url, internal_api_url, api_key, default_number, is_active } = req.body;
+    const { name, api_url, api_key, default_number, is_active } = req.body;
 
     // Basic validation
     if (!name || !api_url || !api_key) {
@@ -186,10 +184,10 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO evolution_instances (name, api_url, internal_api_url, api_key, default_number, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [name, normalizeUrl(api_url), normalizeUrl(internal_api_url), api_key, default_number, is_active ?? true]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -203,14 +201,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, api_url, internal_api_url, api_key, default_number, is_active } = req.body;
+    const { name, api_url, api_key, default_number, is_active } = req.body;
 
     const result = await pool.query(
       `UPDATE evolution_instances 
-       SET name = $1, api_url = $2, internal_api_url = $3, api_key = $4, default_number = $5, is_active = $6
-       WHERE id = $7
+       SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
+       WHERE id = $6
        RETURNING *`,
-      [name, normalizeUrl(api_url), normalizeUrl(internal_api_url), api_key, default_number, is_active, req.params.id]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id]
     );
 
     if (result.rows.length === 0) {
