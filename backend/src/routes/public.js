@@ -113,6 +113,8 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           const effectiveUrl = getEffectiveApiUrl(instance);
           
           // --- Send to Admin ---
+          // DISABLED per user request: "nao vamos notificar outra pessoa. por enquanto"
+          /*
           const targetNumber = settings.whatsapp_target_number || instance.default_number;
           if (targetNumber) {
             const cleanNumber = targetNumber.replace(/\D/g, '');
@@ -164,21 +166,31 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                  await logIntegration(pool, form.id, lead.id, 'whatsapp_admin', 'error', {}, null, 'Nenhum número de destino configurado para notificação admin');
              }
           }
+          */
 
           // --- Send to Client (Lead) ---
           // Try to find client phone
           const clientPhone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular', 'mobile']);
-          if (clientPhone && settings.whatsapp_lead_notification) {
+          
+          // Force send to client if phone exists, ignoring whatsapp_lead_notification flag if global WA is enabled
+          if (clientPhone) {
             const cleanClientPhone = String(clientPhone).replace(/\D/g, '');
             // Basic validation for Brazilian numbers (at least 10 digits: DDD + Number)
             if (cleanClientPhone.length >= 10) {
                console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
                
-               let clientMessage = settings.whatsapp_lead_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               // Use lead message, fallback to main message (if user configured single message), fallback to default
+               let clientMessage = settings.whatsapp_lead_message || settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
                
                // Replace variables
                clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
                clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
+               
+               // Also replace any other field variables like {{email}}, {{city}}, etc.
+               for (const [key, value] of Object.entries(data)) {
+                 const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+                 clientMessage = clientMessage.replace(regex, String(value || ''));
+               }
                
                const clientPayload = {
                   number: cleanClientPhone,
@@ -210,6 +222,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
             } else {
                 await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', { phone: clientPhone }, null, 'Número de telefone do lead inválido ou curto demais');
             }
+          } else {
+             console.log('[WhatsApp] No client phone found in form data');
+             // Optional: Log that we couldn't find a phone number
+             await logIntegration(pool, form.id, lead.id, 'whatsapp_lead', 'error', {}, null, 'Telefone do lead não encontrado nos dados do formulário');
           }
         } catch (error) {
           console.error('[WhatsApp] Global Error:', error.message);
