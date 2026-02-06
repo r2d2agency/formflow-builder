@@ -159,15 +159,14 @@ CREATE TRIGGER update_short_links_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password: admin123)
--- Generate your own hash with: https://bcrypt-generator.com/
-INSERT INTO users (email, password_hash, name, role)
-VALUES (
-    'admin@formbuilder.com',
-    '$2a$12$l3ymPG9lNGiIxF9olYg5.elv9KAR7W8HfIVladYI.Sf4DehBGD6cm',
-    'Administrador',
-    'admin'
-) ON CONFLICT (email) DO NOTHING;
+-- Insert default admin user (Removed in favor of backend auto-seed)
+-- INSERT INTO users (email, password_hash, name, role)
+-- VALUES (
+--    'admin@formbuilder.com',
+--    '$2a$12$l3ymPG9lNGiIxF9olYg5.elv9KAR7W8HfIVladYI.Sf4DehBGD6cm',
+--    'Administrador',
+--    'admin'
+-- ) ON CONFLICT (email) DO NOTHING;
 
 -- Insert default system settings
 INSERT INTO system_settings (key, value) VALUES

@@ -111,14 +111,14 @@ const runMigrations = async () => {
       if (parseInt(userCount.rows[0].count) === 0) {
         console.log('[startup] No users found. Creating default admin...');
         const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash('admin', salt);
+        const hash = await bcrypt.hash('123456', salt);
         
         await pool.query(
           `INSERT INTO users (email, password_hash, name, role)
            VALUES ($1, $2, $3, $4)`,
           ['admin@admin.com', hash, 'Admin', 'admin']
         );
-        console.log('[startup] Default admin created: admin@admin.com / admin');
+        console.log('[startup] Default admin created: admin@admin.com / 123456');
       }
     } catch (e) {
       console.warn('[startup] Failed to seed admin user:', e.message);
