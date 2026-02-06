@@ -46,13 +46,13 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, api_url, api_key, default_number, is_active } = req.body;
+    const { name, api_url, internal_api_url, api_key, default_number, is_active } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO evolution_instances (name, api_url, internal_api_url, api_key, default_number, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, api_url, api_key, default_number, is_active ?? true]
+      [name, api_url, internal_api_url || null, api_key, default_number, is_active ?? true]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -66,14 +66,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, api_url, api_key, default_number, is_active } = req.body;
+    const { name, api_url, internal_api_url, api_key, default_number, is_active } = req.body;
 
     const result = await pool.query(
       `UPDATE evolution_instances 
-       SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
-       WHERE id = $6
+       SET name = $1, api_url = $2, internal_api_url = $3, api_key = $4, default_number = $5, is_active = $6
+       WHERE id = $7
        RETURNING *`,
-      [name, api_url, api_key, default_number, is_active, req.params.id]
+      [name, api_url, internal_api_url || null, api_key, default_number, is_active, req.params.id]
     );
 
     if (result.rows.length === 0) {
