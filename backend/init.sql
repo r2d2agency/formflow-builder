@@ -1,12 +1,12 @@
 -- FormBuilder Database Initialization
 -- This file runs automatically when the PostgreSQL container starts for the first time
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto for older postgres versions if needed, but gen_random_uuid is built-in in v13+
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Forms table
 CREATE TABLE IF NOT EXISTS forms (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS forms (
 
 -- Leads table
 CREATE TABLE IF NOT EXISTS leads (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
     data JSONB NOT NULL,
     source VARCHAR(100),
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS leads (
 
 -- Evolution instances table
 CREATE TABLE IF NOT EXISTS evolution_instances (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     api_url VARCHAR(500) NOT NULL,
     internal_api_url VARCHAR(500),
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS evolution_instances (
 
 -- Webhooks table
 CREATE TABLE IF NOT EXISTS webhooks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
     url VARCHAR(500) NOT NULL,
     method VARCHAR(10) DEFAULT 'POST' CHECK (method IN ('POST', 'PUT')),
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS webhooks (
 
 -- User-Form permissions table (which users can access which forms)
 CREATE TABLE IF NOT EXISTS user_forms (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS user_forms (
 
 -- System settings table (branding, etc.)
 CREATE TABLE IF NOT EXISTS system_settings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key VARCHAR(100) UNIQUE NOT NULL,
     value TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 -- Short links table (URL shortener)
 CREATE TABLE IF NOT EXISTS short_links (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(50) UNIQUE NOT NULL,
     original_url TEXT NOT NULL,
     title VARCHAR(255),
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS short_links (
 
 -- Link clicks tracking table
 CREATE TABLE IF NOT EXISTS link_clicks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     link_id UUID NOT NULL REFERENCES short_links(id) ON DELETE CASCADE,
     ip_address VARCHAR(45),
     user_agent TEXT,

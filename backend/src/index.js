@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
@@ -68,7 +70,33 @@ app.locals.pool = pool;
 // This attempts to add missing columns to existing tables
 const runMigrations = async () => {
   try {
-    // Add internal_api_url to evolution_instances if missing
+    // 1. Initialize Schema if tables are missing
+    try {
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'users'
+        );
+      `);
+
+      if (!tableCheck.rows[0].exists) {
+        console.log('[startup] Users table not found. Initializing database schema...');
+        const initSqlPath = path.join(__dirname, '../init.sql');
+        
+        if (fs.existsSync(initSqlPath)) {
+          const sql = fs.readFileSync(initSqlPath, 'utf8');
+          await pool.query(sql);
+          console.log('[startup] Schema initialized successfully from init.sql');
+        } else {
+          console.warn('[startup] init.sql not found at:', initSqlPath);
+        }
+      }
+    } catch (e) {
+      console.error('[startup] Failed to initialize schema:', e.message);
+    }
+
+    // 2. Add internal_api_url to evolution_instances if missing (Legacy Migration)
     try {
       await pool.query('ALTER TABLE evolution_instances ADD COLUMN IF NOT EXISTS internal_api_url VARCHAR(500)');
       console.log('[startup] Checked/Added internal_api_url column');
