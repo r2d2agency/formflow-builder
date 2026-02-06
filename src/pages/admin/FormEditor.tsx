@@ -648,10 +648,42 @@ const FormEditor: React.FC = () => {
                     </div>
 
                     <div className="border-t pt-4">
+                      <Label className="mb-2 block">Mensagem para Notificação (Admin/Equipe)</Label>
                       <WhatsAppMessageEditor
                         value={localForm.settings?.whatsapp_message}
                         onChange={(msg) => handleSettingsChange('whatsapp_message', msg)}
                       />
+                    </div>
+
+                    <div className="border-t pt-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Mensagem para o Cliente (Lead)</p>
+                          <p className="text-sm text-muted-foreground">
+                            Enviar mensagem de agradecimento/confirmação para o lead
+                          </p>
+                        </div>
+                        <Switch
+                          checked={localForm.settings?.whatsapp_lead_notification}
+                          onCheckedChange={(v) => handleSettingsChange('whatsapp_lead_notification', v)}
+                        />
+                      </div>
+
+                      {localForm.settings?.whatsapp_lead_notification && (
+                        <div className="space-y-2">
+                          <Label htmlFor="whatsapp_lead_message">Mensagem</Label>
+                          <Textarea
+                            id="whatsapp_lead_message"
+                            value={localForm.settings?.whatsapp_lead_message || ''}
+                            onChange={(e) => handleSettingsChange('whatsapp_lead_message', e.target.value)}
+                            placeholder="Olá {{name}}! Recebemos seus dados com sucesso."
+                            rows={3}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Variáveis disponíveis: {'{{name}}'}, {'{{form_name}}'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

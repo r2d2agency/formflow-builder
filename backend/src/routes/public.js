@@ -1,14 +1,262 @@
 const express = require('express');
+const crypto = require('crypto');
 
 const router = express.Router();
 
 // Helper to normalize API URL (remove trailing slash)
 const normalizeUrl = (url) => url ? url.replace(/\/+$/, '') : '';
 
-// Helper to get the effective API URL (internal if available, otherwise public)
+// Helper to get the effective API URL
 const getEffectiveApiUrl = (instance) => {
-  return normalizeUrl(instance.internal_api_url || instance.api_url);
+  return normalizeUrl(instance.api_url);
 };
+
+// Helper to hash data for Facebook CAPI (SHA256)
+const hashData = (data) => {
+  if (!data) return null;
+  return crypto.createHash('sha256').update(data).digest('hex');
+};
+
+// Helper to find field in data by common names
+const findField = (data, searchTerms) => {
+  const entry = Object.entries(data).find(([key]) => 
+    searchTerms.some(term => key.toLowerCase().includes(term))
+  );
+  return entry ? entry[1] : null;
+};
+
+// Async function to process integrations (Fire and Forget)
+const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool) => {
+  const settings = form.settings || {};
+  console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}`);
+  const integrations = [];
+
+  // 1. Webhook
+  if (settings.webhook_enabled && settings.webhook_url) {
+    integrations.push((async () => {
+      try {
+        console.log('[Webhook] Sending...');
+        await fetch(settings.webhook_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            form_id: form.id,
+            form_name: form.name,
+            form_slug: form.slug,
+            lead_id: lead.id,
+            data,
+            submitted_at: lead.created_at,
+            source: lead.source,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          }),
+        });
+        console.log('[Webhook] Sent successfully');
+      } catch (error) {
+        console.error('[Webhook] Error:', error.message);
+      }
+    })());
+  }
+
+  // 2. WhatsApp Notification (Admin & Client)
+  if (settings.whatsapp_notification && settings.evolution_instance_id) {
+    integrations.push((async () => {
+      try {
+        const instanceResult = await pool.query(
+          'SELECT * FROM evolution_instances WHERE id = $1 AND is_active = true',
+          [settings.evolution_instance_id]
+        );
+
+        if (instanceResult.rows.length === 0) {
+          console.log('[WhatsApp] Instance not found or inactive');
+          return;
+        }
+
+        const instance = instanceResult.rows[0];
+        const effectiveUrl = getEffectiveApiUrl(instance);
+        
+        // --- Send to Admin ---
+        const targetNumber = settings.whatsapp_target_number || instance.default_number;
+        if (targetNumber) {
+          const cleanNumber = targetNumber.replace(/\D/g, '');
+          console.log(`[WhatsApp] Sending Admin notification to ${cleanNumber}`);
+          
+          let message = settings.whatsapp_message || '🎉 Novo lead!\n\nFormulário: {{form_name}}\n\n{{dados}}';
+          if (typeof message === 'string') {
+             // Replace variables
+            message = message.replace(/\{\{form_name\}\}/g, form.name);
+            message = message.replace(/\{\{formulario\}\}/g, form.name);
+            for (const [key, value] of Object.entries(data)) {
+              const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+              message = message.replace(regex, String(value || ''));
+            }
+            const dataEntries = Object.entries(data).map(([key, value]) => `${key}: ${value}`).join('\n');
+            message = message.replace(/\{\{dados\}\}/g, dataEntries);
+
+            await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': instance.api_key,
+              },
+              body: JSON.stringify({
+                number: cleanNumber,
+                text: message,
+                delay: 1200,
+                linkPreview: false
+              }),
+            });
+            console.log(`[WhatsApp] Admin notification sent to ${cleanNumber}`);
+          }
+        }
+
+        // --- Send to Client (Lead) ---
+        // Try to find client phone
+        const clientPhone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular', 'mobile']);
+        if (clientPhone && settings.whatsapp_lead_notification) {
+          const cleanClientPhone = String(clientPhone).replace(/\D/g, '');
+          // Basic validation for Brazilian numbers (at least 10 digits: DDD + Number)
+          if (cleanClientPhone.length >= 10) {
+             console.log(`[WhatsApp] Sending Client notification to ${cleanClientPhone}`);
+             
+             let clientMessage = settings.whatsapp_lead_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+             
+             // Replace variables
+             clientMessage = clientMessage.replace(/\{\{form_name\}\}/g, form.name);
+             clientMessage = clientMessage.replace(/\{\{name\}\}/g, findField(data, ['nome', 'name']) || '');
+             
+             await fetch(`${effectiveUrl}/message/sendText/${instance.name}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': instance.api_key,
+                },
+                body: JSON.stringify({
+                  number: cleanClientPhone,
+                  text: clientMessage,
+                  delay: 2000,
+                  linkPreview: false
+                }),
+              });
+             console.log(`[WhatsApp] Client notification sent to ${cleanClientPhone}`);
+          }
+        }
+
+      } catch (error) {
+        console.error('[WhatsApp] Error:', error.message);
+      }
+    })());
+  }
+
+  // 3. Facebook Conversions API
+  if (settings.facebook_pixel && settings.facebook_pixel_access_token) {
+    integrations.push((async () => {
+      try {
+        console.log('[Facebook] Processing CAPI...');
+        const userData = {};
+        
+        // Find and hash user data
+        const email = findField(data, ['email', 'e-mail', 'mail']);
+        if (email) userData.em = [hashData(String(email).toLowerCase().trim())];
+        
+        const phone = findField(data, ['phone', 'whatsapp', 'telefone', 'celular']);
+        if (phone) userData.ph = [hashData(String(phone).replace(/\D/g, ''))];
+        
+        const name = findField(data, ['nome', 'name']);
+        if (name) {
+          const nameParts = String(name).trim().split(' ');
+          if (nameParts[0]) userData.fn = [hashData(nameParts[0].toLowerCase())];
+          if (nameParts.length > 1) userData.ln = [hashData(nameParts[nameParts.length - 1].toLowerCase())];
+        }
+
+        userData.client_ip_address = ipAddress;
+        userData.client_user_agent = userAgent;
+        console.log('[Facebook] Processing CAPI with UserData keys:', Object.keys(userData));
+
+        const eventData = {
+          data: [{
+            event_name: 'Lead',
+            event_time: Math.floor(Date.now() / 1000),
+            action_source: 'website',
+            event_source_url: `${reqOrigin}/f/${form.slug}`,
+            user_data: userData,
+            custom_data: {
+              form_name: form.name,
+              form_slug: form.slug,
+              lead_id: lead.id,
+            },
+          }],
+        };
+
+        if (settings.facebook_pixel_test_code) {
+          eventData.test_event_code = settings.facebook_pixel_test_code;
+        }
+
+        const fbResponse = await fetch(`https://graph.facebook.com/v18.0/${settings.facebook_pixel}/events?access_token=${settings.facebook_pixel_access_token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+
+        if (!fbResponse.ok) {
+          const fbErr = await fbResponse.json();
+          console.error('[Facebook] API Error:', JSON.stringify(fbErr));
+        } else {
+          const fbRes = await fbResponse.json();
+          console.log('[Facebook] Sent successfully. ID:', fbRes.fbtrace_id || 'ok');
+        }
+      } catch (error) {
+        console.error('[Facebook] Error:', error.message);
+      }
+    })());
+  }
+
+  // 4. RD Station (New)
+  const rdToken = settings.rdstation_api_token || settings.rd_station_token;
+  if (rdToken && settings.rdstation_enabled) {
+    integrations.push((async () => {
+      try {
+        console.log('[RD Station] Processing...');
+        const email = findField(data, ['email', 'e-mail', 'mail']);
+        
+        if (!email) {
+          console.warn('[RD Station] Skipped: Email is required');
+          return;
+        }
+
+        const payload = {
+          event_type: "CONVERSION",
+          event_family: "CDP",
+          payload: {
+            conversion_identifier: settings.rdstation_conversion_identifier || form.slug,
+            email: String(email).trim(),
+            ...data
+          }
+        };
+
+        // Use Public Token endpoint
+        const rdResponse = await fetch(`https://api.rd.services/platform/conversions_client/v1/conversions?api_key=${rdToken}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!rdResponse.ok) {
+          const rdErr = await rdResponse.json();
+          console.error('[RD Station] API Error:', JSON.stringify(rdErr));
+        } else {
+          console.log('[RD Station] Sent successfully');
+        }
+      } catch (error) {
+        console.error('[RD Station] Error:', error.message);
+      }
+    })());
+  }
+
+  // Execute all integrations in parallel (background)
+  await Promise.allSettled(integrations);
+};
+
 // POST /api/public/forms/:slug/partial - Save partial lead data progressively
 router.post('/forms/:slug/partial', async (req, res) => {
   try {
@@ -144,280 +392,11 @@ router.post('/forms/:slug/submit', async (req, res) => {
     }
     const settings = form.settings || {};
 
-    // Send webhook if enabled
-    if (settings.webhook_enabled && settings.webhook_url) {
-      try {
-        await fetch(settings.webhook_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            form_id: form.id,
-            form_name: form.name,
-            form_slug: form.slug,
-            lead_id: lead.id,
-            data,
-            submitted_at: lead.created_at,
-            source,
-            ip_address: ipAddress,
-            user_agent: userAgent,
-          }),
-        });
-      } catch (webhookError) {
-        console.error('Webhook error:', webhookError);
-      }
-    }
-
-    // Send WhatsApp notification if enabled
-    if (settings.whatsapp_notification && settings.evolution_instance_id) {
-      console.log('[WhatsApp] Notification enabled, instance:', settings.evolution_instance_id);
-      try {
-        // Get Evolution instance
-        const instanceResult = await pool.query(
-          'SELECT * FROM evolution_instances WHERE id = $1 AND is_active = true',
-          [settings.evolution_instance_id]
-        );
-
-        console.log('[WhatsApp] Instance found:', instanceResult.rows.length > 0);
-
-        if (instanceResult.rows.length > 0) {
-          const instance = instanceResult.rows[0];
-          
-          // Determine target number (use settings override or instance default)
-          const targetNumber = settings.whatsapp_target_number || instance.default_number;
-          
-          if (!targetNumber) {
-            console.error('[WhatsApp] No target phone number configured');
-          } else {
-            const cleanNumber = targetNumber.replace(/\D/g, '');
-            const effectiveUrl = getEffectiveApiUrl(instance);
-            console.log('[WhatsApp] Sending to:', cleanNumber);
-            console.log('[WhatsApp] API URL (effective):', effectiveUrl);
-            console.log('[WhatsApp] Instance name:', instance.name);
-            
-            // Check if whatsapp_message is the new format (object with items) or old format (string)
-            const whatsappMessage = settings.whatsapp_message;
-            
-            if (whatsappMessage && whatsappMessage.items && Array.isArray(whatsappMessage.items)) {
-              // New format: send multiple messages with delay
-              const delaySeconds = whatsappMessage.delay_seconds || 2;
-              
-              for (let i = 0; i < whatsappMessage.items.length; i++) {
-                const item = whatsappMessage.items[i];
-                
-                // Wait delay between messages (except first)
-                if (i > 0) {
-                  await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-                }
-                
-                let apiEndpoint;
-                let body;
-                
-                if (item.type === 'text') {
-                  // Replace variables in text
-                  let text = item.content || '';
-                  text = text.replace(/\{\{form_name\}\}/g, form.name);
-                  text = text.replace(/\{\{formulario\}\}/g, form.name);
-                  
-                  for (const [key, value] of Object.entries(data)) {
-                    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-                    text = text.replace(regex, String(value || ''));
-                  }
-                  
-                  const dataEntries = Object.entries(data)
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join('\n');
-                  text = text.replace(/\{\{dados\}\}/g, dataEntries);
-                  
-                  apiEndpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
-                  body = { 
-                    number: cleanNumber, 
-                    textMessage: { text },
-                    options: { delay: 1200, presence: "composing" }
-                  };
-                  
-                } else if (item.type === 'audio') {
-                  apiEndpoint = `${effectiveUrl}/message/sendWhatsAppAudio/${instance.name}`;
-                  body = { 
-                    number: cleanNumber, 
-                    audio: item.content,
-                    options: { delay: 1200, presence: "recording" }
-                  };
-                  
-                } else if (item.type === 'video' || item.type === 'document') {
-                  apiEndpoint = `${effectiveUrl}/message/sendMedia/${instance.name}`;
-                  body = {
-                    number: cleanNumber,
-                    mediatype: item.type === 'video' ? 'video' : 'document',
-                    media: item.content,
-                    fileName: item.filename || 'file',
-                    options: { delay: 1200, presence: "composing" }
-                  };
-                }
-                
-                if (apiEndpoint && body) {
-                  console.log(`[WhatsApp] Sending ${item.type} message...`);
-                  console.log(`[WhatsApp] Endpoint: ${apiEndpoint}`);
-                  
-                  const response = await fetch(apiEndpoint, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'apikey': instance.api_key,
-                    },
-                    body: JSON.stringify(body),
-                  });
-                  
-                  const responseData = await response.json().catch(() => ({ error: 'Invalid JSON' }));
-                  console.log(`[WhatsApp] ${item.type} response:`, response.status, responseData);
-                  
-                  if (!response.ok) {
-                    console.error(`[WhatsApp] ${item.type} error:`, responseData);
-                  }
-                }
-              }
-            } else {
-              // Old format or default: simple text message
-              let message = (typeof whatsappMessage === 'string' ? whatsappMessage : null) 
-                || '🎉 Novo lead!\n\nFormulário: {{form_name}}\n\n{{dados}}';
-              
-              message = message.replace(/\{\{form_name\}\}/g, form.name);
-              message = message.replace(/\{\{formulario\}\}/g, form.name);
-              
-              for (const [key, value] of Object.entries(data)) {
-                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-                message = message.replace(regex, String(value || ''));
-              }
-              
-              const dataEntries = Object.entries(data)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
-              message = message.replace(/\{\{dados\}\}/g, dataEntries);
-              
-              console.log('[WhatsApp] Sending simple text message...');
-              const endpoint = `${effectiveUrl}/message/sendText/${instance.name}`;
-              console.log('[WhatsApp] Endpoint:', endpoint);
-
-              const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': instance.api_key,
-                },
-                body: JSON.stringify({
-                  number: cleanNumber,
-                  textMessage: { text: message },
-                  options: { delay: 1200, presence: "composing" }
-                }),
-              });
-
-              const responseData = await response.json().catch(() => ({ error: 'Invalid JSON' }));
-              console.log('[WhatsApp] Response:', response.status, responseData);
-              
-              if (!response.ok) {
-                console.error('[WhatsApp] Error:', responseData);
-              }
-            }
-          }
-        }
-      } catch (whatsappError) {
-        console.error('[WhatsApp] Notification error:', whatsappError);
-      }
-    } else {
-      console.log('[WhatsApp] Notification not enabled or no instance configured');
-      console.log('[WhatsApp] whatsapp_notification:', settings.whatsapp_notification);
-      console.log('[WhatsApp] evolution_instance_id:', settings.evolution_instance_id);
-    }
-
-    // Send Facebook Conversions API event if configured
-    if (settings.facebook_pixel && settings.facebook_pixel_access_token) {
-      console.log('[Facebook] Pixel configured:', settings.facebook_pixel);
-      try {
-        // Build user data for matching
-        const userData = {};
-        
-        // Try to find email in submitted data
-        const emailField = Object.entries(data).find(([key]) => 
-          key.toLowerCase().includes('email')
-        );
-        if (emailField) {
-          // Hash email (Facebook requires SHA256, but we'll send unhashed and let FB hash it)
-          userData.em = [String(emailField[1]).toLowerCase().trim()];
-        }
-        
-        // Try to find phone in submitted data
-        const phoneField = Object.entries(data).find(([key]) => 
-          key.toLowerCase().includes('phone') || 
-          key.toLowerCase().includes('whatsapp') || 
-          key.toLowerCase().includes('telefone') ||
-          key.toLowerCase().includes('celular')
-        );
-        if (phoneField) {
-          // Clean phone number
-          const cleanPhone = String(phoneField[1]).replace(/\D/g, '');
-          userData.ph = [cleanPhone];
-        }
-        
-        // Try to find name in submitted data
-        const nameField = Object.entries(data).find(([key]) => 
-          key.toLowerCase().includes('nome') || 
-          key.toLowerCase().includes('name')
-        );
-        if (nameField) {
-          const nameParts = String(nameField[1]).trim().split(' ');
-          if (nameParts[0]) userData.fn = [nameParts[0].toLowerCase()];
-          if (nameParts.length > 1) userData.ln = [nameParts[nameParts.length - 1].toLowerCase()];
-        }
-        
-        // Add client info
-        userData.client_ip_address = ipAddress;
-        userData.client_user_agent = userAgent;
-        
-        const eventData = {
-          data: [{
-            event_name: 'Lead',
-            event_time: Math.floor(Date.now() / 1000),
-            action_source: 'website',
-            event_source_url: `${req.headers.origin || req.headers.referer || ''}/f/${slug}`,
-            user_data: userData,
-            custom_data: {
-              form_name: form.name,
-              form_slug: form.slug,
-              lead_id: lead.id,
-            },
-          }],
-        };
-        
-        // Add test_event_code if configured (for testing)
-        if (settings.facebook_pixel_test_code) {
-          eventData.test_event_code = settings.facebook_pixel_test_code;
-        }
-        
-        const fbApiUrl = `https://graph.facebook.com/v18.0/${settings.facebook_pixel}/events?access_token=${settings.facebook_pixel_access_token}`;
-        
-        console.log('[Facebook] Sending Lead event...');
-        const fbResponse = await fetch(fbApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
-        
-        const fbData = await fbResponse.json();
-        console.log('[Facebook] Response:', fbResponse.status, fbData);
-        
-        if (!fbResponse.ok) {
-          console.error('[Facebook] Error:', fbData.error || fbData);
-        }
-      } catch (fbError) {
-        console.error('[Facebook] Conversions API error:', fbError.message);
-      }
-    } else {
-      if (settings.facebook_pixel) {
-        console.log('[Facebook] Pixel configured but missing access token');
-      }
-    }
-
-    // Send Google Analytics event if configured
-    // Note: GA4 Measurement Protocol would go here if needed
+    // Execute integrations asynchronously (Fire and Forget)
+    const reqOrigin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    processIntegrations(form, lead, data, ipAddress, userAgent, reqOrigin, pool).catch(err => {
+      console.error('Error processing integrations:', err);
+    });
 
     res.status(201).json({
       success: true,
