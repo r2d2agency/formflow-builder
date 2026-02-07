@@ -371,6 +371,14 @@ const TypeformRenderer: React.FC<{
             />
           )}
 
+          {/* Title and Description */}
+          <div className="text-center space-y-2">
+            <h1 className="text-xl font-bold">{form.name}</h1>
+            {form.description && (
+              <p className="text-sm opacity-80">{form.description}</p>
+            )}
+          </div>
+
           {/* Question number */}
           <span className="text-sm font-medium opacity-60">
             {currentIndex + 1} / {fields.length}
@@ -527,6 +535,9 @@ const ChatRenderer: React.FC<{
           />
         )}
         <h1 className="text-lg font-semibold">{form.name}</h1>
+        {form.description && (
+          <p className="text-sm text-muted-foreground mt-1">{form.description}</p>
+        )}
       </div>
 
       {/* Messages */}
