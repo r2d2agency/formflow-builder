@@ -443,17 +443,18 @@ const RemarketingList: React.FC = () => {
 
         {/* Step Dialog */}
         <Dialog open={isStepDialogOpen} onOpenChange={setIsStepDialogOpen}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="p-6 pb-2">
               <DialogTitle>Adicionar Passo</DialogTitle>
               <DialogDescription>
                 Configure a mensagem e o tempo de envio para este passo da campanha.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Form Side */}
-              <form id="step-form" onSubmit={handleCreateStep} className="space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Form Side */}
+                <form id="step-form" onSubmit={handleCreateStep} className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="step_order">Ordem</Label>
@@ -677,9 +678,10 @@ const RemarketingList: React.FC = () => {
                   ))}
                 </div>
               </div>
+              </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="p-6 pt-2 border-t mt-auto">
               <Button type="button" variant="outline" onClick={() => setIsStepDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" form="step-form" disabled={isUploading}>
                 {isUploading ? 'Enviando...' : 'Salvar'}
@@ -695,10 +697,29 @@ const RemarketingList: React.FC = () => {
               <DialogTitle>Testar Campanha</DialogTitle>
               <DialogDescription>
                 Envie a sequência de mensagens para um número de teste.
-                As variáveis serão substituídas por dados fictícios (ex: Nome Teste).
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <div className="rounded-md bg-yellow-50 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">Atenção sobre Mídia</h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>
+                        Se você estiver rodando este projeto localmente (localhost), o envio de mídia (imagem, áudio, etc) 
+                        pode falhar se a Evolution API estiver em um servidor externo, pois ela não conseguirá acessar 
+                        seus arquivos locais. Para produção, use um domínio público.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="test-phone">Número WhatsApp (com DDD)</Label>
                 <Input

@@ -70,7 +70,12 @@ router.post('/:type', authMiddleware, async (req, res) => {
     fs.writeFileSync(filePath, base64Data, 'base64');
     
     // Generate public URL
-    const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+    let baseUrl = process.env.API_BASE_URL;
+    if (!baseUrl) {
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      baseUrl = `${protocol}://${host}`;
+    }
     const fileUrl = `${baseUrl}/api/uploads/${type}/${uniqueFilename}`;
     
     res.json({ 
