@@ -156,6 +156,27 @@ export const useTestEvolutionInstance = () => {
   });
 };
 
+export const useConnectEvolutionInstance = () => {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiService.get<{ base64?: string; pairingCode?: string; count?: number }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCE_BY_ID(id)}/connect`
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao gerar conexão',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useSendTestMessage = () => {
   return useMutation({
     mutationFn: async ({ id, phone, message, type, media_url, filename }: { 

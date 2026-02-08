@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Plus,
+  Pencil,
+  Trash2,
+  MessageSquare,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  MoreVertical,
+  Activity,
+  QrCode,
+  Wifi,
+} from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+import { AdminLayout } from '@/components/layout/AdminLayout';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -21,36 +32,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
-  useEvolutionInstances,
-  useCreateEvolutionInstance,
-  useUpdateEvolutionInstance,
-  useDeleteEvolutionInstance,
-  useTestEvolutionInstance,
-  useSendTestMessage,
-} from '@/hooks/useEvolutionInstances';
-import { useFileUpload } from '@/hooks/useFileUpload';
-import {
-  Plus,
-  Edit,
-  Trash2,
-  TestTube,
-  MessageSquare,
-  Loader2,
-  Send,
-  Upload,
-} from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { EvolutionInstance } from '@/types';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,74 +61,63 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+
+import {
+  useEvolutionInstances,
+  useCreateEvolutionInstance,
+  useUpdateEvolutionInstance,
+  useDeleteEvolutionInstance,
+  useTestEvolutionInstance,
+  useConnectEvolutionInstance,
+} from '@/hooks/useEvolutionInstances';
+import type { EvolutionInstance } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+const formSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório'),
+  api_url: z.string().url('URL inválida').min(1, 'URL da API é obrigatória'),
+  api_key: z.string().min(1, 'API Key é obrigatória'),
+  default_number: z.string().optional(),
+  is_active: z.boolean().default(true),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const EvolutionInstances: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingInstance, setEditingInstance] = useState<EvolutionInstance | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [testingId, setTestingId] = useState<string | null>(null);
-  const [sendTestInstance, setSendTestInstance] = useState<EvolutionInstance | null>(null);
-  const [testMessageData, setTestMessageData] = useState({
-    phone: '',
-    message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
-    type: 'text',
-    media_url: '',
-    filename: '',
-  });
-  const [formData, setFormData] = useState({
-    name: '',
-    api_url: '',
-    api_key: '',
-    default_number: '',
-    is_active: true,
-  });
+  const [instanceToDelete, setInstanceToDelete] = useState<string | null>(null);
+  
+  // QR Code State
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<{ base64?: string; pairingCode?: string } | null>(null);
+  const [connectingInstance, setConnectingInstance] = useState<string | null>(null);
 
-  const { data: instances, isLoading, error } = useEvolutionInstances();
+  const { data: instances, isLoading, error: loadErrorMessage } = useEvolutionInstances();
   const createInstance = useCreateEvolutionInstance();
   const updateInstance = useUpdateEvolutionInstance();
   const deleteInstance = useDeleteEvolutionInstance();
   const testInstance = useTestEvolutionInstance();
-  const sendTestMessage = useSendTestMessage();
-  const { uploadFile, isUploading } = useFileUpload();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const connectInstance = useConnectEvolutionInstance();
 
-  const displayInstances = instances ?? [];
-  const loadErrorMessage = error instanceof Error ? error.message : (error ? 'Erro ao carregar instâncias.' : null);
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Map message type to upload type
-    let uploadType: 'images' | 'video' | 'audio' | 'documents' = 'documents';
-    if (testMessageData.type === 'image') uploadType = 'images';
-    else if (testMessageData.type === 'video') uploadType = 'video';
-    else if (testMessageData.type === 'audio') uploadType = 'audio';
-
-    const result = await uploadFile(file, uploadType);
-    
-    if (result) {
-      setTestMessageData(prev => ({
-        ...prev,
-        media_url: result.url,
-        filename: prev.type === 'document' ? result.original_filename : prev.filename
-      }));
-    }
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      api_url: '',
+      api_key: '',
+      default_number: '',
+      is_active: true,
+    },
+  });
 
   const handleOpenDialog = (instance?: EvolutionInstance) => {
     if (instance) {
       setEditingInstance(instance);
-      setFormData({
+      form.reset({
         name: instance.name,
         api_url: instance.api_url,
         api_key: instance.api_key,
@@ -137,7 +126,7 @@ const EvolutionInstances: React.FC = () => {
       });
     } else {
       setEditingInstance(null);
-      setFormData({
+      form.reset({
         name: '',
         api_url: '',
         api_key: '',
@@ -148,56 +137,65 @@ const EvolutionInstances: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (editingInstance) {
-      await updateInstance.mutateAsync({
-        id: editingInstance.id,
-        data: formData,
-      });
-    } else {
-      await createInstance.mutateAsync(formData);
+  const onSubmit = async (values: FormValues) => {
+    try {
+      if (editingInstance) {
+        await updateInstance.mutateAsync({
+          id: editingInstance.id,
+          data: values,
+        });
+      } else {
+        await createInstance.mutateAsync(values);
+      }
+      setIsDialogOpen(false);
+      form.reset();
+    } catch (error) {
+      // Error handled by mutation
     }
-    setIsDialogOpen(false);
   };
 
   const handleDelete = async () => {
-    if (deleteId) {
-      await deleteInstance.mutateAsync(deleteId);
-      setDeleteId(null);
+    if (instanceToDelete) {
+      await deleteInstance.mutateAsync(instanceToDelete);
+      setIsDeleteDialogOpen(false);
+      setInstanceToDelete(null);
     }
   };
 
-  const handleTest = async (id: string) => {
-    setTestingId(id);
+  const handleTestConnection = async (id: string) => {
     try {
       await testInstance.mutateAsync(id);
-    } finally {
-      setTestingId(null);
+    } catch (error) {
+      // Error handled by mutation
     }
   };
 
-  const handleOpenSendTest = (instance: EvolutionInstance) => {
-    setSendTestInstance(instance);
-    setTestMessageData({
-      phone: instance.default_number || '',
-      message: '🎉 Mensagem de teste!\n\nSe você recebeu esta mensagem, sua integração com a Evolution API está funcionando corretamente.',
-      type: 'text',
-      media_url: '',
-      filename: '',
-    });
-  };
-
-  const handleSendTestMessage = async () => {
-    if (!sendTestInstance) return;
-    await sendTestMessage.mutateAsync({
-      id: sendTestInstance.id,
-      phone: testMessageData.phone,
-      message: testMessageData.message,
-      type: testMessageData.type,
-      media_url: testMessageData.media_url,
-      filename: testMessageData.filename,
-    });
-    setSendTestInstance(null);
+  const handleConnect = async (instance: EvolutionInstance) => {
+    setConnectingInstance(instance.name);
+    try {
+      const data = await connectInstance.mutateAsync(instance.id);
+      
+      // Check if we got a QR code or success message
+      if (data.base64) {
+        setQrCodeData(data);
+        setIsQrDialogOpen(true);
+      } else if (data.count) {
+        toast({
+            title: 'Conectado',
+            description: `Instância já conectada (${data.count} sessões).`,
+        });
+      } else {
+        // Fallback for other states
+         toast({
+            title: 'Status',
+            description: JSON.stringify(data),
+        });
+      }
+    } catch (error) {
+      // Error handled by mutation
+    } finally {
+      setConnectingInstance(null);
+    }
   };
 
   return (
@@ -206,9 +204,9 @@ const EvolutionInstances: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Evolution API</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Minhas Instâncias Evolution API</h1>
             <p className="text-muted-foreground">
-              Configure instâncias da Evolution API para notificações WhatsApp
+              Configure suas instâncias da Evolution API para notificações WhatsApp
             </p>
           </div>
           <Button onClick={() => handleOpenDialog()}>
@@ -228,348 +226,296 @@ const EvolutionInstances: React.FC = () => {
               <p className="text-sm text-muted-foreground">
                 A Evolution API é uma solução para integração com WhatsApp. Você pode 
                 configurar múltiplas instâncias para enviar notificações automáticas 
-                quando novos leads são capturados.
+                quando novos leads são capturados. Cada usuário gerencia suas próprias instâncias.
               </p>
             </div>
           </CardContent>
         </Card>
 
         {loadErrorMessage && (
-          <Card className="border-destructive/30 bg-destructive/5">
-            <CardContent className="py-4">
-              <p className="font-medium text-destructive">Erro ao carregar instâncias</p>
-              <p className="text-sm text-muted-foreground">{loadErrorMessage}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Se você estiver testando fora do painel (ex.: Insomnia/Postman), envie o header{' '}
-                <code>Authorization: Bearer SEU_TOKEN</code>.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-md bg-destructive/15 p-4 text-destructive">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm font-medium">Erro ao carregar instâncias</p>
+            </div>
+            <p className="mt-1 text-sm opacity-90">{String(loadErrorMessage)}</p>
+          </div>
         )}
 
-        {/* Instances Table */}
-        {/* Instances Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Instâncias Configuradas</CardTitle>
-            <CardDescription>
-              Gerencie suas instâncias da Evolution API
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>URL da API</TableHead>
-                    <TableHead>Número Padrão</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayInstances.map((instance) => (
-                    <TableRow key={instance.id}>
-                      <TableCell className="font-medium">{instance.name}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {instance.api_url}
-                      </TableCell>
-                      <TableCell>{instance.default_number || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={instance.is_active ? 'default' : 'secondary'}>
-                          {instance.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenSendTest(instance)}
-                            title="Enviar mensagem de teste"
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleTest(instance.id)}
-                            title="Testar conexão"
-                            disabled={testingId === instance.id}
-                          >
-                            {testingId === instance.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <TestTube className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDialog(instance)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(instance.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {displayInstances.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          Nenhuma instância configurada.
-                        </p>
-                        <Button variant="link" onClick={() => handleOpenDialog()}>
-                          Adicionar primeira instância
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingInstance ? 'Editar Instância' : 'Nova Instância'}
-            </DialogTitle>
-            <DialogDescription>
-              Configure os dados de conexão com a Evolution API
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome da Instância</Label>
-              <Input
-                id="name"
-                placeholder="Ex: Instância Principal"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="api_url">URL da API</Label>
-              <Input
-                id="api_url"
-                placeholder="https://evolution.seusite.com"
-                value={formData.api_url}
-                onChange={(e) => setFormData({ ...formData, api_url: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="api_key">API Key</Label>
-              <Input
-                id="api_key"
-                type="password"
-                placeholder="Sua chave de API"
-                value={formData.api_key}
-                onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="default_number">Número Padrão (opcional)</Label>
-              <Input
-                id="default_number"
-                placeholder="5511999998888"
-                value={formData.default_number}
-                onChange={(e) => setFormData({ ...formData, default_number: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                Número para enviar notificações (com código do país)
-              </p>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="is_active">Instância Ativa</Label>
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit}>
-              {editingInstance ? 'Salvar' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir instância?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A instância será removida e não poderá mais ser usada para notificações.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Send Test Message Dialog */}
-      <Dialog open={!!sendTestInstance} onOpenChange={() => setSendTestInstance(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enviar Mensagem de Teste</DialogTitle>
-            <DialogDescription>
-              Envie uma mensagem de teste via {sendTestInstance?.name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="test_phone">Número de WhatsApp</Label>
-              <Input
-                id="test_phone"
-                placeholder="5511999998888"
-                value={testMessageData.phone}
-                onChange={(e) => setTestMessageData({ ...testMessageData, phone: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                Número com código do país (sem espaços ou símbolos)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tipo de Mensagem</Label>
-              <Select 
-                value={testMessageData.type} 
-                onValueChange={(value) => setTestMessageData({ ...testMessageData, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">Texto</SelectItem>
-                  <SelectItem value="image">Imagem</SelectItem>
-                  <SelectItem value="video">Vídeo</SelectItem>
-                  <SelectItem value="audio">Áudio</SelectItem>
-                  <SelectItem value="document">Documento</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {testMessageData.type !== 'text' && (
-              <div className="space-y-2">
-                <Label htmlFor="test_media_url">URL da Mídia</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="test_media_url"
-                    placeholder="https://exemplo.com/arquivo.jpg"
-                    value={testMessageData.media_url}
-                    onChange={(e) => setTestMessageData({ ...testMessageData, media_url: e.target.value })}
-                  />
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileChange}
-                    accept={
-                      testMessageData.type === 'image' ? 'image/*' :
-                      testMessageData.type === 'video' ? 'video/*' :
-                      testMessageData.type === 'audio' ? 'audio/*' :
-                      '*/*'
-                    }
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={handleUploadClick}
-                    disabled={isUploading}
-                    title="Upload de arquivo"
-                  >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  </Button>
+        {/* Instances Grid */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))
+          ) : instances?.length === 0 ? (
+            <Card className="col-span-full border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
                 </div>
-              </div>
-            )}
+                <h3 className="mt-4 text-lg font-semibold">Nenhuma instância configurada</h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Comece criando sua primeira instância da Evolution API.
+                </p>
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Instância
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            instances?.map((instance) => (
+              <Card key={instance.id} className="relative overflow-hidden">
+                <div className="absolute right-2 top-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleTestConnection(instance.id)}>
+                        <Activity className="mr-2 h-4 w-4" />
+                        Testar Conexão
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleConnect(instance)}>
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Ler QR Code
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenDialog(instance)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => {
+                          setInstanceToDelete(instance.id);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{instance.name}</CardTitle>
+                    {instance.is_active ? (
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                        Ativa
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Inativa</Badge>
+                    )}
+                  </div>
+                  <CardDescription className="truncate font-mono text-xs">
+                    {instance.api_url}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Número Padrão:</span>
+                      <span className="font-medium">
+                        {instance.default_number || '-'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                     <Button 
+                       variant="outline" 
+                       className="flex-1"
+                       size="sm"
+                       onClick={() => handleTestConnection(instance.id)}
+                       disabled={testInstance.isPending}
+                     >
+                       <Wifi className="mr-2 h-3 w-3" />
+                       Testar
+                     </Button>
+                     <Button 
+                       variant="default" 
+                       className="flex-1"
+                       size="sm"
+                       onClick={() => handleConnect(instance)}
+                       disabled={connectInstance.isPending && connectingInstance === instance.name}
+                     >
+                       <QrCode className="mr-2 h-3 w-3" />
+                       QR Code
+                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
 
-            {testMessageData.type === 'document' && (
-              <div className="space-y-2">
-                <Label htmlFor="test_filename">Nome do Arquivo</Label>
-                <Input
-                  id="test_filename"
-                  placeholder="documento.pdf"
-                  value={testMessageData.filename}
-                  onChange={(e) => setTestMessageData({ ...testMessageData, filename: e.target.value })}
+        {/* Create/Edit Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingInstance ? 'Editar Instância' : 'Nova Instância'}
+              </DialogTitle>
+              <DialogDescription>
+                Configure os dados de conexão da Evolution API.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome da Instância</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Principal" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            )}
+                <FormField
+                  control={form.control}
+                  name="api_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL da API</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://api.evolution.com" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        URL base onde a Evolution API está hospedada.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="api_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Key (Global)</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Sua API Key Global" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Chave de autenticação global da Evolution API.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="default_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número Padrão (Opcional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="5511999999999" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Número para envio de notificações administrativas.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="is_active"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Ativa</FormLabel>
+                        <FormDescription>
+                          Habilitar ou desabilitar esta instância.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={createInstance.isPending || updateInstance.isPending}>
+                    {editingInstance ? 'Salvar Alterações' : 'Criar Instância'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
 
-            <div className="space-y-2">
-              <Label htmlFor="test_message">
-                {testMessageData.type === 'text' ? 'Mensagem' : 'Legenda (Opcional)'}
-              </Label>
-              <Textarea
-                id="test_message"
-                placeholder={testMessageData.type === 'text' ? "Digite a mensagem de teste..." : "Legenda para a mídia..."}
-                value={testMessageData.message}
-                onChange={(e) => setTestMessageData({ ...testMessageData, message: e.target.value })}
-                rows={4}
-              />
+        {/* Delete Confirmation */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Instância?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Isso excluirá permanentemente a instância
+                do banco de dados do FormBuilder (não afeta o servidor Evolution).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDelete}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* QR Code Dialog */}
+        <Dialog open={isQrDialogOpen} onOpenChange={setIsQrDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Escanear QR Code</DialogTitle>
+              <DialogDescription>
+                Abra o WhatsApp no seu celular, vá em Aparelhos Conectados {'>'} Conectar Aparelho e escaneie o código abaixo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-6">
+                {qrCodeData?.base64 ? (
+                    <img src={qrCodeData.base64} alt="QR Code WhatsApp" className="h-64 w-64 object-contain" />
+                ) : (
+                    <div className="flex h-64 w-64 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        Sem QR Code disponível
+                    </div>
+                )}
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSendTestInstance(null)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSendTestMessage}
-              disabled={
-                sendTestMessage.isPending || 
-                !testMessageData.phone || 
-                (testMessageData.type === 'text' && !testMessageData.message) ||
-                (testMessageData.type !== 'text' && !testMessageData.media_url)
-              }
-            >
-              {sendTestMessage.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Enviar Mensagem
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setIsQrDialogOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AdminLayout>
   );
 };
