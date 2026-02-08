@@ -36,6 +36,16 @@ const parseUserAgent = (userAgent) => {
 const protectedRouter = express.Router();
 protectedRouter.use(authMiddleware);
 
+// Middleware to check if user is admin
+const adminOnly = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+  }
+  next();
+};
+
+protectedRouter.use(adminOnly);
+
 // GET /api/links - List all links with click counts
 protectedRouter.get('/', async (req, res) => {
   try {

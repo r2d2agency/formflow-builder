@@ -124,8 +124,12 @@ class ApiService {
     });
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
+    const options: RequestInit = { method: 'DELETE' };
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+    return this.request<T>(endpoint, options);
   }
 }
 

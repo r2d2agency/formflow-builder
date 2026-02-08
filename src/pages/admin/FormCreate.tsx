@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCreateForm } from '@/hooks/useForms';
-import { FileText, MessageSquare, Layout, ArrowRight, ArrowLeft } from 'lucide-react';
+import { FileText, MessageSquare, Layout, ArrowRight, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import type { FormType } from '@/types';
 
 const formTypes: { value: FormType; label: string; description: string; icon: React.ElementType }[] = [
@@ -29,6 +29,12 @@ const formTypes: { value: FormType; label: string; description: string; icon: Re
     label: 'Formulário Padrão',
     description: 'Todos os campos visíveis de uma vez',
     icon: Layout,
+  },
+  {
+    value: 'link_bio',
+    label: 'Link na Bio',
+    description: 'Página de links estilo Linktree para redes sociais',
+    icon: LinkIcon,
   },
 ];
 
@@ -59,12 +65,22 @@ const FormCreate: React.FC = () => {
   };
 
   const handleCreate = async () => {
+    // Default fields based on type
+    let initialFields: any[] = [];
+    
+    if (formType === 'link_bio') {
+      initialFields = [
+        { id: '1', type: 'link', label: 'Meu Site', placeholder: 'https://seusite.com.br', required: false, order: 0 },
+        { id: '2', type: 'link', label: 'Fale no WhatsApp', placeholder: 'https://wa.me/55...', required: false, order: 1 },
+      ];
+    }
+
     const result = await createForm.mutateAsync({
       name,
       slug,
       description,
       type: formType,
-      fields: [],
+      fields: initialFields,
       settings: {
         webhook_enabled: false,
         whatsapp_notification: false,

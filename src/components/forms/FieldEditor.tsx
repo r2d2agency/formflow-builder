@@ -25,6 +25,7 @@ const fieldTypes = [
   { value: 'select', label: 'Seleção (Dropdown)', hasPlaceholder: false, hasOptions: true },
   { value: 'radio', label: 'Múltipla Escolha', hasPlaceholder: false, hasOptions: true },
   { value: 'checkbox', label: 'Checkbox', hasPlaceholder: false, hasOptions: true },
+  { value: 'link', label: 'Link / Botão', hasPlaceholder: true, defaultPlaceholder: 'https://...' },
 ];
 
 interface FieldEditorProps {
@@ -98,13 +99,10 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dr
       
       <div className="flex-1 space-y-4">
         {/* Main row */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select
-              value={field.type}
-              onValueChange={handleTypeChange}
-            >
+            <Label>Tipo do Campo</Label>
+            <Select value={field.type} onValueChange={handleTypeChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -117,41 +115,49 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dr
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
-            <Label>Label</Label>
+            <Label>{field.type === 'link' ? 'Texto do Botão' : 'Rótulo (Label)'}</Label>
             <Input
               value={field.label}
               onChange={(e) => onUpdate({ label: e.target.value })}
-              placeholder="Nome do campo"
+              placeholder={field.type === 'link' ? 'Ex: Meu Site' : 'Ex: Nome completo'}
             />
           </div>
-          
+        </div>
+
+        {/* Second row */}
+        <div className="grid gap-4 sm:grid-cols-2">
           {hasPlaceholder && (
             <div className="space-y-2">
-              <Label>Placeholder</Label>
+              <Label>{field.type === 'link' ? 'URL de Destino' : 'Placeholder'}</Label>
               <Input
                 value={field.placeholder || ''}
                 onChange={(e) => onUpdate({ placeholder: e.target.value })}
-                placeholder={fieldTypeConfig?.defaultPlaceholder || 'Texto de exemplo'}
+                placeholder={field.type === 'link' ? 'https://exemplo.com.br' : 'Ex: Digite seu nome...'}
               />
             </div>
           )}
           
-          <div className="flex items-end gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={field.required}
-                onCheckedChange={(v) => onUpdate({ required: v })}
-              />
-              <Label>Obrigatório</Label>
-            </div>
+          <div className="flex items-center gap-4 pt-8">
+            {field.type !== 'link' && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id={`required-${field.id}`}
+                  checked={field.required}
+                  onCheckedChange={(checked) => onUpdate({ required: checked })}
+                />
+                <Label htmlFor={`required-${field.id}`}>Obrigatório</Label>
+              </div>
+            )}
+            
             <Button
               variant="ghost"
               size="icon"
+              className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={onRemove}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-5 w-5" />
             </Button>
           </div>
         </div>

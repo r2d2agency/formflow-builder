@@ -37,11 +37,11 @@ export interface ChangePasswordPayload {
 }
 
 // Form Types
-export type FormType = 'typeform' | 'chat' | 'standard';
+export type FormType = 'typeform' | 'chat' | 'standard' | 'link_bio';
 
 export interface FormField {
   id: string;
-  type: 'text' | 'email' | 'phone' | 'whatsapp' | 'select' | 'radio' | 'checkbox' | 'textarea' | 'number' | 'date' | 'file';
+  type: 'text' | 'email' | 'phone' | 'whatsapp' | 'select' | 'radio' | 'checkbox' | 'textarea' | 'number' | 'date' | 'file' | 'link';
   label: string;
   placeholder?: string;
   required: boolean;

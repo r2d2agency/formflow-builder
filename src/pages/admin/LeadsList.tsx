@@ -26,7 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useLeads, useDeleteLead, useExportLeads } from '@/hooks/useLeads';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useLeads, useDeleteLead, useExportLeads, useBulkDeleteLeads } from '@/hooks/useLeads';
 import {
   Search,
   Download,
@@ -53,12 +54,23 @@ import {
 const LeadsList: React.FC = () => {
   const [search, setSearch] = useState('');
   const [formFilter, setFormFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [page] = useState(1);
   
-  const { data, isLoading, error } = useLeads(page, 50, formFilter === 'all' ? undefined : formFilter);
+  const { data, isLoading, error } = useLeads(
+    page, 
+    50, 
+    formFilter === 'all' ? undefined : formFilter,
+    startDate ? new Date(startDate) : undefined,
+    endDate ? new Date(endDate + 'T23:59:59') : undefined
+  );
   const deleteLead = useDeleteLead();
+  const bulkDeleteLead = useBulkDeleteLeads();
   const exportLeads = useExportLeads();
 
   // Mock data for demo
@@ -97,11 +109,33 @@ const LeadsList: React.FC = () => {
     return dataString.includes(searchLower);
   });
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredLeads.map(l => l.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(x => x !== id));
+    }
+  };
+
   const handleDelete = async () => {
     if (deleteId) {
       await deleteLead.mutateAsync(deleteId);
       setDeleteId(null);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    await bulkDeleteLead.mutateAsync({ ids: selectedIds });
+    setSelectedIds([]);
+    setBulkDeleteOpen(false);
   };
 
   const handleExport = (format: 'csv' | 'excel' = 'excel') => {
@@ -122,10 +156,18 @@ const LeadsList: React.FC = () => {
               Visualize e gerencie os leads capturados
             </p>
           </div>
-          <Button onClick={() => handleExport('excel')} variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Exportar Excel
-          </Button>
+          <div className="flex gap-2">
+            {selectedIds.length > 0 && (
+              <Button onClick={() => setBulkDeleteOpen(true)} variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir ({selectedIds.length})
+              </Button>
+            )}
+            <Button onClick={() => handleExport('excel')} variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Exportar Excel
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -151,6 +193,20 @@ const LeadsList: React.FC = () => {
                   <SelectItem value="2">Quiz de Vendas</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-[150px]"
+                />
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-[150px]"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -174,6 +230,12 @@ const LeadsList: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox 
+                        checked={filteredLeads.length > 0 && selectedIds.length === filteredLeads.length}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                      />
+                    </TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Telefone</TableHead>
@@ -185,8 +247,15 @@ const LeadsList: React.FC = () => {
                 <TableBody>
                   {filteredLeads.map((lead) => {
                     const { name, email, phone } = extractLeadMainFields(lead.data);
+                    const isSelected = selectedIds.includes(lead.id);
                     return (
                       <TableRow key={lead.id}>
+                        <TableCell>
+                          <Checkbox 
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleSelectOne(lead.id, !!checked)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{name}</TableCell>
                         <TableCell>{email}</TableCell>
                         <TableCell>{phone}</TableCell>
@@ -222,7 +291,7 @@ const LeadsList: React.FC = () => {
                   })}
                   {filteredLeads.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <p className="text-muted-foreground">
                           Nenhum lead encontrado.
                         </p>

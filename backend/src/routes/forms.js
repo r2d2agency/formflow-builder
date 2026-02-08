@@ -68,10 +68,25 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('SELECT * FROM forms WHERE id = $1', [req.params.id]);
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    let query = 'SELECT * FROM forms WHERE id = $1';
+    const params = [req.params.id];
+
+    if (!isAdmin) {
+      query = `
+        SELECT f.* FROM forms f
+        INNER JOIN user_forms uf ON f.id = uf.form_id
+        WHERE f.id = $1 AND uf.user_id = $2
+      `;
+      params.push(userId);
+    }
+
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Formulário não encontrado' });
+      return res.status(404).json({ success: false, error: 'Formulário não encontrado ou acesso negado' });
     }
 
     res.json({ success: true, data: result.rows[0] });
@@ -216,13 +231,27 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { name, slug, description, type, fields, settings, is_active } = req.body;
+    const formId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check ownership if not admin
+    if (!isAdmin) {
+      const check = await pool.query(
+        'SELECT 1 FROM user_forms WHERE form_id = $1 AND user_id = $2',
+        [formId, userId]
+      );
+      if (check.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado. Você não tem permissão para editar este formulário.' });
+      }
+    }
 
     const result = await pool.query(
       `UPDATE forms 
        SET name = $1, slug = $2, description = $3, type = $4, fields = $5, settings = $6, is_active = $7
        WHERE id = $8
        RETURNING *`,
-      [name, slug, description, type, JSON.stringify(fields || []), JSON.stringify(settings || {}), is_active, req.params.id]
+      [name, slug, description, type, JSON.stringify(fields || []), JSON.stringify(settings || {}), is_active, formId]
     );
 
     if (result.rows.length === 0) {
@@ -243,7 +272,22 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('DELETE FROM forms WHERE id = $1 RETURNING id', [req.params.id]);
+    const formId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check ownership if not admin
+    if (!isAdmin) {
+      const check = await pool.query(
+        'SELECT 1 FROM user_forms WHERE form_id = $1 AND user_id = $2',
+        [formId, userId]
+      );
+      if (check.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado. Você não tem permissão para excluir este formulário.' });
+      }
+    }
+
+    const result = await pool.query('DELETE FROM forms WHERE id = $1 RETURNING id', [formId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Formulário não encontrado' });

@@ -19,6 +19,7 @@ import {
   Palette,
   Link2,
   Activity,
+  Timer,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,13 +37,14 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Formulários', href: '/admin/forms', icon: FileText },
   { name: 'Leads', href: '/admin/leads', icon: Users },
-  { name: 'Links', href: '/admin/links', icon: Link2 },
-  { name: 'Logs de Integração', href: '/admin/integrations-logs', icon: Activity },
+  { name: 'Remarketing', href: '/admin/remarketing', icon: Timer },
+  { name: 'Links', href: '/admin/links', icon: Link2, adminOnly: true },
+  { name: 'Logs de Integração', href: '/admin/integrations-logs', icon: Activity, adminOnly: true },
   { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
-  { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare },
-  { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
+  { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare, adminOnly: true },
+  { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook, adminOnly: true },
   { name: 'Branding', href: '/admin/branding', icon: Palette, adminOnly: true },
-  { name: 'Configurações', href: '/admin/settings', icon: Settings },
+  { name: 'Configurações', href: '/admin/settings', icon: Settings, adminOnly: true },
 ];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
@@ -149,11 +151,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Configurações
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {user?.role === 'admin' && (
+                  <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configurações
+                  </DropdownMenuItem>
+                )}
+                {user?.role === 'admin' && <DropdownMenuSeparator />}
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sair

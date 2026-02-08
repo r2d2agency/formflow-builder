@@ -14,23 +14,56 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     const showPartial = req.query.show_partial === 'true';
+    const { start_date, end_date } = req.query;
+    
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    const conditions = [];
+    const params = [];
+    let paramCount = 1;
 
     // Filter by partial status
-    const whereClause = showPartial ? '' : 'WHERE (l.is_partial IS NULL OR l.is_partial = false)';
+    if (!showPartial) {
+        conditions.push('(l.is_partial IS NULL OR l.is_partial = false)');
+    }
+
+    if (start_date) {
+        conditions.push(`l.created_at >= $${paramCount}`);
+        params.push(start_date);
+        paramCount++;
+    }
+
+    if (end_date) {
+        conditions.push(`l.created_at <= $${paramCount}`);
+        params.push(end_date);
+        paramCount++;
+    }
+
+    // Filter by user forms if not admin
+    if (!isAdmin) {
+        conditions.push(`l.form_id IN (SELECT form_id FROM user_forms WHERE user_id = $${paramCount})`);
+        params.push(userId);
+        paramCount++;
+    }
+
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) FROM leads l ${whereClause}`
+      `SELECT COUNT(*) FROM leads l ${whereClause}`,
+      params
     );
     const total = parseInt(countResult.rows[0].count);
 
+    const dataParams = [...params, limit, offset];
     const result = await pool.query(
       `SELECT l.*, f.name as form_name, f.slug as form_slug
        FROM leads l
        JOIN forms f ON l.form_id = f.id
        ${whereClause}
        ORDER BY l.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
+      dataParams
     );
 
     res.json({
@@ -57,24 +90,64 @@ router.get('/form/:formId', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     const showPartial = req.query.show_partial === 'true';
+    const { start_date, end_date } = req.query;
+
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isAdmin) {
+        const permCheck = await pool.query(
+            'SELECT 1 FROM user_forms WHERE user_id = $1 AND form_id = $2',
+            [userId, req.params.formId]
+        );
+        if (permCheck.rows.length === 0) {
+            return res.status(403).json({ success: false, error: 'Acesso negado a este formulário' });
+        }
+    }
+
+    const conditions = [];
+    const params = [];
+    let paramCount = 1;
+
+    // Filter by form
+    conditions.push(`l.form_id = $${paramCount}`);
+    params.push(req.params.formId);
+    paramCount++;
 
     // Filter by partial status
-    const partialFilter = showPartial ? '' : 'AND (l.is_partial IS NULL OR l.is_partial = false)';
+    if (!showPartial) {
+        conditions.push('(l.is_partial IS NULL OR l.is_partial = false)');
+    }
+
+    if (start_date) {
+        conditions.push(`l.created_at >= $${paramCount}`);
+        params.push(start_date);
+        paramCount++;
+    }
+
+    if (end_date) {
+        conditions.push(`l.created_at <= $${paramCount}`);
+        params.push(end_date);
+        paramCount++;
+    }
+
+    const whereClause = 'WHERE ' + conditions.join(' AND ');
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) FROM leads l WHERE form_id = $1 ${partialFilter}`,
-      [req.params.formId]
+      `SELECT COUNT(*) FROM leads l ${whereClause}`,
+      params
     );
     const total = parseInt(countResult.rows[0].count);
 
+    const dataParams = [...params, limit, offset];
     const result = await pool.query(
       `SELECT l.*, f.name as form_name
        FROM leads l
        JOIN forms f ON l.form_id = f.id
-       WHERE l.form_id = $1 ${partialFilter}
+       ${whereClause}
        ORDER BY l.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [req.params.formId, limit, offset]
+       LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
+      dataParams
     );
 
     res.json({
@@ -116,11 +189,98 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/leads/bulk
+router.delete('/bulk', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { ids, delete_all, filters } = req.body;
+
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (delete_all) {
+      // Delete based on filters
+      let query = 'DELETE FROM leads';
+      const params = [];
+      let paramCount = 1;
+      const conditions = [];
+
+      // Apply filters
+      if (filters) {
+        if (filters.form_id && filters.form_id !== 'all') {
+            conditions.push(`form_id = $${paramCount}`);
+            params.push(filters.form_id);
+            paramCount++;
+        }
+        if (filters.start_date) {
+            conditions.push(`created_at >= $${paramCount}`);
+            params.push(filters.start_date);
+            paramCount++;
+        }
+        if (filters.end_date) {
+            conditions.push(`created_at <= $${paramCount}`);
+            params.push(filters.end_date);
+            paramCount++;
+        }
+        // Partial filter logic if needed, but usually bulk delete applies to what's seen
+        if (filters.show_partial !== true) {
+             conditions.push('(is_partial IS NULL OR is_partial = false)');
+        }
+      }
+
+      // Filter by user forms if not admin
+      if (!isAdmin) {
+          conditions.push(`form_id IN (SELECT form_id FROM user_forms WHERE user_id = $${paramCount})`);
+          params.push(userId);
+          paramCount++;
+      }
+      
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+      
+      const result = await pool.query(query, params);
+      return res.json({ success: true, message: `${result.rowCount} leads excluídos com sucesso` });
+    } else {
+      // Delete by IDs
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ success: false, error: 'IDs não fornecidos' });
+      }
+
+      let query = 'DELETE FROM leads WHERE id = ANY($1)';
+      const params = [ids];
+      let paramCount = 2;
+      
+      if (!isAdmin) {
+          query += ` AND form_id IN (SELECT form_id FROM user_forms WHERE user_id = $${paramCount})`;
+          params.push(userId);
+      }
+
+      const result = await pool.query(query, params);
+      return res.json({ success: true, message: `${result.rowCount} leads excluídos com sucesso` });
+    }
+  } catch (error) {
+    console.error('Bulk delete leads error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao excluir leads' });
+  }
+});
+
 // DELETE /api/leads/:id
 router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING id', [req.params.id]);
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    let query = 'DELETE FROM leads WHERE id = $1';
+    const params = [req.params.id];
+    
+    if (!isAdmin) {
+        query += ' AND form_id IN (SELECT form_id FROM user_forms WHERE user_id = $2)';
+        params.push(userId);
+    }
+
+    const result = await pool.query(query + ' RETURNING id', params);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Lead não encontrado' });

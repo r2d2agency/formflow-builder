@@ -607,6 +607,241 @@ const ChatRenderer: React.FC<{
   );
 };
 
+// Link Bio style renderer
+const LinkBioRenderer: React.FC<{
+  form: Form;
+  onSubmit: (data: Record<string, any>, partialLeadId?: string | null) => Promise<void>;
+  isSubmitting: boolean;
+  isEmbed?: boolean;
+  onFieldComplete?: (fieldLabel: string, value: any) => void;
+}> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const customStyles = useCustomStyles(form);
+  
+  const links = (form.fields || []).filter(f => f.type === 'link').sort((a, b) => a.order - b.order);
+  const inputs = (form.fields || []).filter(f => f.type !== 'link').sort((a, b) => a.order - b.order);
+
+  const handleChange = (label: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [label]: value }));
+  };
+
+  const handleBlur = (label: string, value: any) => {
+    if (onFieldComplete && value && value.toString().trim()) {
+      onFieldComplete(label, value);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    for (const field of inputs) {
+      const value = formData[field.label];
+      const error = validateField(field, value);
+      
+      if (error) {
+        toast({
+          title: 'Atenção',
+          description: error,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
+    onSubmit(formData);
+  };
+
+  const renderField = (field: FormField) => {
+    const value = formData[field.label] || '';
+    const fieldId = `field-${field.id}`;
+
+    // Reuse StandardRenderer logic logic for rendering inputs
+    // We can copy the switch case here or extract it to a helper if we wanted to be DRY,
+    // but for now, to avoid massive refactoring, I'll just handle basic inputs needed for lead capture.
+    
+    // Simplification: Support Text, Email, Phone, WhatsApp, Select
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <Textarea
+            id={fieldId}
+            value={value}
+            onChange={(e) => handleChange(field.label, e.target.value)}
+            onBlur={(e) => handleBlur(field.label, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            disabled={isSubmitting}
+            className="bg-background/50 border-input/50 focus:bg-background transition-colors"
+          />
+        );
+      case 'whatsapp':
+      case 'phone':
+      case 'email':
+        return (
+          <MaskedInput
+            id={fieldId}
+            mask={field.type}
+            value={value}
+            onChange={(val) => handleChange(field.label, val)}
+            onBlur={() => handleBlur(field.label, value)}
+            disabled={isSubmitting}
+            className="bg-background/50 border-input/50 focus:bg-background transition-colors"
+          />
+        );
+      case 'select':
+         return (
+          <Select 
+            value={value} 
+            onValueChange={(val) => {
+              handleChange(field.label, val);
+              handleBlur(field.label, val);
+            }}
+          >
+            <SelectTrigger id={fieldId} className="bg-background/50 border-input/50">
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(field.options || []).map((option, i) => (
+                <SelectItem key={i} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      default:
+        return (
+          <Input
+            id={fieldId}
+            value={value}
+            onChange={(e) => handleChange(field.label, e.target.value)}
+            onBlur={(e) => handleBlur(field.label, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            disabled={isSubmitting}
+            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+            className="bg-background/50 border-input/50 focus:bg-background transition-colors"
+          />
+        );
+    }
+  };
+
+  return (
+    <div 
+      className={cn(
+        "flex flex-col items-center min-h-screen p-6",
+        isEmbed ? "bg-transparent" : "bg-gradient-to-b from-[var(--form-bg)] to-muted/20"
+      )}
+      style={{ 
+        ...customStyles, 
+        backgroundColor: 'var(--form-bg)',
+        color: 'var(--form-text)' 
+      }}
+    >
+      <div className="w-full max-w-md space-y-8">
+        {/* Profile / Header */}
+        <div className="text-center space-y-4">
+          {form.settings?.logo_url && (
+            <div className="mx-auto w-24 h-24 rounded-full overflow-hidden border-4 border-background shadow-xl">
+              <img 
+                src={form.settings.logo_url} 
+                alt="Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">{form.name}</h1>
+            {form.description && (
+              <p className="text-muted-foreground">{form.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Links Section */}
+        {links.length > 0 && (
+          <div className="space-y-3">
+            {links.map((link) => (
+              <a
+                key={link.id}
+                href={link.placeholder || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
+              >
+                <div 
+                  className="w-full p-4 rounded-xl text-center font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md"
+                  style={{ 
+                    backgroundColor: 'var(--form-primary)',
+                    color: 'var(--form-button-text)'
+                  }}
+                >
+                  {link.label}
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Lead Capture Form Section (if there are input fields) */}
+        {inputs.length > 0 && (
+          <div className="pt-8">
+            <div className="rounded-2xl border bg-card/50 backdrop-blur-sm p-6 shadow-sm">
+              <div className="mb-4 text-center">
+                <h3 className="font-semibold text-lg">Entre em contato</h3>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {inputs.map((field) => (
+                  <div key={field.id} className="space-y-1.5">
+                    <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {renderField(field)}
+                  </div>
+                ))}
+
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isSubmitting}
+                  style={{ 
+                    backgroundColor: 'var(--form-primary)',
+                    color: 'var(--form-button-text)',
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    form.settings?.button_text || 'Enviar'
+                  )}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+        
+        {/* Footer / Branding */}
+        <div className="pt-8 pb-4 text-center text-xs text-muted-foreground opacity-50">
+          Powered by FormFlow
+        </div>
+      </div>
+      
+      {/* Floating WhatsApp Button */}
+      {form.settings?.whatsapp_float_enabled && form.settings?.whatsapp_float_number && (
+        <WhatsAppFloatButton
+          phoneNumber={form.settings.whatsapp_float_number}
+          message={form.settings.whatsapp_float_message}
+          position="left"
+        />
+      )}
+    </div>
+  );
+};
+
 // Standard form renderer - CENTRALIZED
 const StandardRenderer: React.FC<{
   form: Form;
@@ -1162,6 +1397,16 @@ const PublicForm: React.FC = () => {
     case 'chat':
       return (
         <ChatRenderer
+          form={displayForm}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          isEmbed={isEmbed}
+          onFieldComplete={handleFieldComplete}
+        />
+      );
+    case 'link_bio':
+      return (
+        <LinkBioRenderer
           form={displayForm}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}

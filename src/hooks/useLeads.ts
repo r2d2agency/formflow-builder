@@ -4,13 +4,16 @@ import { API_CONFIG } from '@/config/api';
 import type { Lead, PaginatedResponse } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
-export const useLeads = (page = 1, limit = 20, formId?: string) => {
+export const useLeads = (page = 1, limit = 20, formId?: string, startDate?: Date, endDate?: Date) => {
   return useQuery({
-    queryKey: ['leads', page, limit, formId],
+    queryKey: ['leads', page, limit, formId, startDate, endDate],
     queryFn: async () => {
-      const endpoint = formId
+      let endpoint = formId
         ? `${API_CONFIG.ENDPOINTS.LEADS_BY_FORM(formId)}?page=${page}&limit=${limit}`
         : `${API_CONFIG.ENDPOINTS.LEADS}?page=${page}&limit=${limit}`;
+      
+      if (startDate) endpoint += `&start_date=${startDate.toISOString()}`;
+      if (endDate) endpoint += `&end_date=${endDate.toISOString()}`;
       
       const response = await apiService.get<PaginatedResponse<Lead>>(endpoint);
       if (!response.success) {
@@ -55,6 +58,37 @@ export const useDeleteLead = () => {
       toast({
         title: 'Lead excluído',
         description: 'O lead foi excluído com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useBulkDeleteLeads = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, delete_all, filters }: { ids?: string[]; delete_all?: boolean; filters?: any }) => {
+      const response = await apiService.delete(
+        `${API_CONFIG.ENDPOINTS.LEADS}/bulk`,
+        { ids, delete_all, filters }
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: 'Leads excluídos',
+        description: 'Os leads foram excluídos com sucesso.',
       });
     },
     onError: (error: Error) => {

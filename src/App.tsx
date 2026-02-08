@@ -25,6 +25,7 @@ import BrandingPage from "./pages/admin/BrandingPage";
 import LinksList from "./pages/admin/LinksList";
 import LinkStats from "./pages/admin/LinkStats";
 import IntegrationLogsPage from "./pages/admin/IntegrationLogsPage";
+import RemarketingList from "./pages/admin/RemarketingList";
 
 const queryClient = new QueryClient();
 
@@ -85,7 +86,7 @@ const App = () => (
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <UsersList />
                 </ProtectedRoute>
               }
@@ -93,7 +94,7 @@ const App = () => (
             <Route
               path="/admin/evolution"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <EvolutionInstances />
                 </ProtectedRoute>
               }
@@ -101,7 +102,7 @@ const App = () => (
             <Route
               path="/admin/webhooks"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <WebhooksPage />
                 </ProtectedRoute>
               }
@@ -109,7 +110,7 @@ const App = () => (
             <Route
               path="/admin/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <Settings />
                 </ProtectedRoute>
               }
@@ -117,7 +118,7 @@ const App = () => (
             <Route
               path="/admin/branding"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <BrandingPage />
                 </ProtectedRoute>
               }
@@ -125,7 +126,7 @@ const App = () => (
             <Route
               path="/admin/links"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <LinksList />
                 </ProtectedRoute>
               }
@@ -133,7 +134,7 @@ const App = () => (
             <Route
               path="/admin/links/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <LinkStats />
                 </ProtectedRoute>
               }
@@ -141,8 +142,16 @@ const App = () => (
             <Route
               path="/admin/integrations-logs"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <IntegrationLogsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/remarketing"
+              element={
+                <ProtectedRoute>
+                  <RemarketingList />
                 </ProtectedRoute>
               }
             />

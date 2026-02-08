@@ -140,11 +140,26 @@ const createEvolutionService = (instance) => {
 // Apply auth middleware
 router.use(authMiddleware);
 
+// Middleware to check if user is admin
+const adminOnly = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+  }
+  next();
+};
+
+router.use(adminOnly);
+
 // GET /api/evolution-instances
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('SELECT * FROM evolution_instances ORDER BY created_at DESC');
+    const userId = req.user.id;
+    // Filter by user_id
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Get evolution instances error:', error);
@@ -156,7 +171,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('SELECT * FROM evolution_instances WHERE id = $1', [req.params.id]);
+    const userId = req.user.id;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
+      [req.params.id, userId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Instância não encontrada' });
@@ -174,7 +193,11 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/connect', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('SELECT * FROM evolution_instances WHERE id = $1', [req.params.id]);
+    const userId = req.user.id;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
+      [req.params.id, userId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Instância não encontrada' });
@@ -199,6 +222,7 @@ router.get('/:id/connect', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const userId = req.user.id;
     const { name, api_url, api_key, default_number, is_active } = req.body;
 
     // Basic validation
@@ -207,10 +231,10 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true, userId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -224,14 +248,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const userId = req.user.id;
     const { name, api_url, api_key, default_number, is_active } = req.body;
 
     const result = await pool.query(
       `UPDATE evolution_instances 
        SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
-       WHERE id = $6
+       WHERE id = $6 AND user_id = $7
        RETURNING *`,
-      [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id, userId]
     );
 
     if (result.rows.length === 0) {
@@ -249,7 +274,11 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('DELETE FROM evolution_instances WHERE id = $1 RETURNING id', [req.params.id]);
+    const userId = req.user.id;
+    const result = await pool.query(
+      'DELETE FROM evolution_instances WHERE id = $1 AND user_id = $2 RETURNING id', 
+      [req.params.id, userId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Instância não encontrada' });
@@ -267,7 +296,11 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/test', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query('SELECT * FROM evolution_instances WHERE id = $1', [req.params.id]);
+    const userId = req.user.id;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
+      [req.params.id, userId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Instância não encontrada' });

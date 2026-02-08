@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS forms (
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('typeform', 'chat', 'standard')),
+    type VARCHAR(50) NOT NULL CHECK (type IN ('typeform', 'chat', 'standard', 'link_bio')),
     fields JSONB DEFAULT '[]',
     settings JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,

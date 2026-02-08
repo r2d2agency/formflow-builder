@@ -4,6 +4,16 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+// Middleware to check if user is admin
+const adminOnly = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+  }
+  next();
+};
+
+router.use(adminOnly);
+
 // GET /api/logs/integrations
 router.get('/integrations', async (req, res) => {
   try {

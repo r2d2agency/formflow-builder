@@ -18,6 +18,8 @@ const uploadsRoutes = require('./routes/uploads');
 const linksRoutes = require('./routes/links');
 const diagnosticsRoutes = require('./routes/diagnostics');
 const logsRoutes = require('./routes/logs');
+const remarketingRoutes = require('./routes/remarketing');
+const { startScheduler } = require('./scheduler/remarketing');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -97,7 +99,19 @@ const runMigrations = async () => {
       console.error('[startup] Failed to initialize schema:', e.message);
     }
 
-    // 2. Add internal_api_url to evolution_instances if missing (Legacy Migration)
+    // 2. Update forms type check constraint
+    try {
+      await pool.query(`
+        ALTER TABLE forms DROP CONSTRAINT IF EXISTS forms_type_check;
+        ALTER TABLE forms ADD CONSTRAINT forms_type_check CHECK (type IN ('typeform', 'chat', 'standard', 'link_bio'));
+      `);
+      console.log('[startup] Forms type constraint updated.');
+    } catch (e) {
+      // Ignore error if constraint doesn't exist or other issues, but log it
+      console.warn('[startup] Note on constraint update:', e.message);
+    }
+
+    // 3. Add internal_api_url to evolution_instances if missing (Legacy Migration)
     try {
       await pool.query('ALTER TABLE evolution_instances ADD COLUMN IF NOT EXISTS internal_api_url VARCHAR(500)');
       console.log('[startup] Checked/Added internal_api_url column');
@@ -122,6 +136,59 @@ const runMigrations = async () => {
       console.log('[startup] Checked/Created integration_logs table');
     } catch (e) {
       console.warn('[startup] Failed to create integration_logs table:', e.message);
+    }
+
+    // 4. Add user_id to evolution_instances if missing
+    try {
+      await pool.query('ALTER TABLE evolution_instances ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE');
+      console.log('[startup] Checked/Added user_id column to evolution_instances');
+    } catch (e) {
+      console.warn('[startup] Failed to add user_id column to evolution_instances:', e.message);
+    }
+
+    // 5. Create Remarketing Tables
+    try {
+      // remarketing_campaigns
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS remarketing_campaigns (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          form_id UUID REFERENCES forms(id) ON DELETE CASCADE,
+          name VARCHAR(255) NOT NULL,
+          type VARCHAR(20) NOT NULL CHECK (type IN ('recovery', 'drip')),
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `);
+      
+      // remarketing_steps
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS remarketing_steps (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          campaign_id UUID REFERENCES remarketing_campaigns(id) ON DELETE CASCADE,
+          step_order INTEGER NOT NULL,
+          delay_value INTEGER NOT NULL,
+          delay_unit VARCHAR(10) NOT NULL CHECK (delay_unit IN ('minutes', 'hours', 'days')),
+          message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('text', 'audio', 'video', 'document', 'image')),
+          message_content TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `);
+
+      // remarketing_logs
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS remarketing_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+          campaign_id UUID REFERENCES remarketing_campaigns(id) ON DELETE CASCADE,
+          step_id UUID REFERENCES remarketing_steps(id) ON DELETE CASCADE,
+          sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          status VARCHAR(20) NOT NULL,
+          error_message TEXT
+        );
+      `);
+      console.log('[startup] Checked/Created remarketing tables');
+    } catch (e) {
+      console.warn('[startup] Failed to create remarketing tables:', e.message);
     }
 
     console.log('[startup] Migrations checked');
@@ -218,6 +285,7 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/links', linksRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/remarketing', remarketingRoutes);
 app.use('/l', linksRoutes); // Public redirect route
 
 app.use((err, req, res, next) => {
@@ -231,7 +299,10 @@ app.listen(PORT, () => {
   // Startup DB check (logs only; does not crash the container)
   pool
     .query('SELECT 1')
-    .then(() => console.log('[startup] DB connection: OK'))
+    .then(() => {
+      console.log('[startup] DB connection: OK');
+      startScheduler(pool);
+    })
     .catch((err) =>
       console.error('[startup] DB connection: FAILED', {
         message: err?.message,
