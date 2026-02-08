@@ -4,9 +4,9 @@ import { API_CONFIG } from '@/config/api';
 import type { Lead, PaginatedResponse } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
-export const useLeads = (page = 1, limit = 20, formId?: string, startDate?: Date, endDate?: Date) => {
+export const useLeads = (page = 1, limit = 20, formId?: string, startDate?: Date, endDate?: Date, showPartial = false) => {
   return useQuery({
-    queryKey: ['leads', page, limit, formId, startDate, endDate],
+    queryKey: ['leads', page, limit, formId, startDate, endDate, showPartial],
     queryFn: async () => {
       let endpoint = formId
         ? `${API_CONFIG.ENDPOINTS.LEADS_BY_FORM(formId)}?page=${page}&limit=${limit}`
@@ -14,6 +14,7 @@ export const useLeads = (page = 1, limit = 20, formId?: string, startDate?: Date
       
       if (startDate) endpoint += `&start_date=${startDate.toISOString()}`;
       if (endDate) endpoint += `&end_date=${endDate.toISOString()}`;
+      if (showPartial) endpoint += `&show_partial=true`;
       
       const response = await apiService.get<PaginatedResponse<Lead>>(endpoint);
       if (!response.success) {

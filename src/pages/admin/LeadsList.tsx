@@ -56,6 +56,7 @@ const LeadsList: React.FC = () => {
   const [formFilter, setFormFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [showPartial, setShowPartial] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -67,7 +68,8 @@ const LeadsList: React.FC = () => {
     50, 
     formFilter === 'all' ? undefined : formFilter,
     startDate ? new Date(startDate) : undefined,
-    endDate ? new Date(endDate + 'T23:59:59') : undefined
+    endDate ? new Date(endDate + 'T23:59:59') : undefined,
+    showPartial
   );
   const deleteLead = useDeleteLead();
   const bulkDeleteLead = useBulkDeleteLeads();
@@ -206,6 +208,19 @@ const LeadsList: React.FC = () => {
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full sm:w-[150px]"
                 />
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="showPartial" 
+                    checked={showPartial} 
+                    onCheckedChange={(checked) => setShowPartial(!!checked)} 
+                  />
+                  <label 
+                    htmlFor="showPartial" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Mostrar Incompletos
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -260,7 +275,12 @@ const LeadsList: React.FC = () => {
                         <TableCell>{email}</TableCell>
                         <TableCell>{phone}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{lead.form_name || '-'}</Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline">{lead.form_name || '-'}</Badge>
+                            {lead.is_partial && (
+                              <Badge variant="secondary" className="w-fit text-[10px] h-5">Incompleto</Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
