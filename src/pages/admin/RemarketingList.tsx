@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { useForms } from '@/hooks/useForms';
+import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ interface RemarketingCampaign {
 const RemarketingList: React.FC = () => {
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const { data: formsData } = useForms(1, 100);
+  const { data: instances } = useEvolutionInstances();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -112,11 +114,54 @@ const RemarketingList: React.FC = () => {
     },
   });
 
+  const testCampaign = useMutation({
+    mutationFn: async ({ id, target_number, instance_id }: { id: string, target_number: string, instance_id: string }) => {
+      const res = await apiService.post<{ message: string }>(`/remarketing/campaigns/${id}/test`, {
+        target_number,
+        instance_id
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Sucesso', description: data.message });
+      setIsTestDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro', description: err.message || 'Erro ao testar campanha', variant: 'destructive' });
+    }
+  });
+
   // --- Dialog States ---
   const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<RemarketingCampaign | null>(null);
   const [isStepDialogOpen, setIsStepDialogOpen] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+
+  // --- Test Dialog State ---
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
+  const [testCampaignId, setTestCampaignId] = useState<string | null>(null);
+  const [testPhone, setTestPhone] = useState('');
+  const [testInstanceId, setTestInstanceId] = useState('');
+
+  const handleTestClick = (campaignId: string) => {
+    setTestCampaignId(campaignId);
+    if (instances && instances.length > 0) {
+      const active = instances.find(i => i.is_active);
+      if (active) setTestInstanceId(active.id);
+      else setTestInstanceId(instances[0].id);
+    }
+    setIsTestDialogOpen(true);
+  };
+
+  const handleRunTest = () => {
+    if (testCampaignId && testPhone && testInstanceId) {
+      testCampaign.mutate({
+        id: testCampaignId,
+        target_number: testPhone,
+        instance_id: testInstanceId
+      });
+    }
+  };
 
   // --- Step Dialog State ---
   const [stepMessageType, setStepMessageType] = useState<'text' | 'image' | 'video' | 'audio' | 'document'>('text');
@@ -331,6 +376,14 @@ const RemarketingList: React.FC = () => {
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Excluir
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTestClick(campaign.id)}
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        Testar
                       </Button>
                       <Button
                         variant="ghost"
@@ -630,6 +683,51 @@ const RemarketingList: React.FC = () => {
               <Button type="button" variant="outline" onClick={() => setIsStepDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" form="step-form" disabled={isUploading}>
                 {isUploading ? 'Enviando...' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Test Dialog */}
+        <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Testar Campanha</DialogTitle>
+              <DialogDescription>
+                Envie a sequência de mensagens para um número de teste.
+                As variáveis serão substituídas por dados fictícios (ex: Nome Teste).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="test-phone">Número WhatsApp (com DDD)</Label>
+                <Input
+                  id="test-phone"
+                  placeholder="5511999998888"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="test-instance">Instância Evolution</Label>
+                <Select value={testInstanceId} onValueChange={setTestInstanceId}>
+                  <SelectTrigger id="test-instance">
+                    <SelectValue placeholder="Selecione a instância" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instances?.map((instance) => (
+                      <SelectItem key={instance.id} value={instance.id}>
+                        {instance.name} {instance.is_active ? '(Ativa)' : '(Inativa)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsTestDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleRunTest} disabled={!testPhone || !testInstanceId || testCampaign.isPending}>
+                {testCampaign.isPending ? 'Enviando...' : 'Enviar Teste'}
               </Button>
             </DialogFooter>
           </DialogContent>

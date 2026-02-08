@@ -168,12 +168,24 @@ const runMigrations = async () => {
           step_order INTEGER NOT NULL,
           delay_value INTEGER NOT NULL,
           delay_unit VARCHAR(10) NOT NULL CHECK (delay_unit IN ('minutes', 'hours', 'days')),
-          message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('text', 'audio', 'video', 'document', 'image')),
+          message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('text', 'audio', 'video', 'document', 'image', 'multi')),
           message_content TEXT,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
       `);
 
+      // 5.1 Update constraint for existing installations
+      try {
+        await pool.query(`
+          ALTER TABLE remarketing_steps DROP CONSTRAINT IF EXISTS remarketing_steps_message_type_check;
+          ALTER TABLE remarketing_steps ADD CONSTRAINT remarketing_steps_message_type_check 
+          CHECK (message_type IN ('text', 'audio', 'video', 'document', 'image', 'multi'));
+        `);
+        console.log('[startup] Remarketing steps constraint updated (added multi).');
+      } catch (e) {
+        console.warn('[startup] Failed to update remarketing constraint:', e.message);
+      }
+      
       // remarketing_logs
       await pool.query(`
         CREATE TABLE IF NOT EXISTS remarketing_logs (

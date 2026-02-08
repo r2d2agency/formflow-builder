@@ -292,4 +292,161 @@ router.delete('/steps/:id', async (req, res) => {
   }
 });
 
+// --- Test ---
+
+// POST /api/remarketing/campaigns/:id/test
+router.post('/campaigns/:id/test', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+    const { target_number, instance_id } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!target_number || !instance_id) {
+        return res.status(400).json({ success: false, error: 'Número de destino e instância são obrigatórios' });
+    }
+
+    // 1. Check permission and get campaign
+    let campaignCheckQuery = `SELECT rc.* FROM remarketing_campaigns rc `;
+    let queryParams = [id];
+
+    if (!isAdmin) {
+        campaignCheckQuery += ` JOIN user_forms uf ON rc.form_id = uf.form_id WHERE rc.id = $1 AND uf.user_id = $2`;
+        queryParams.push(userId);
+    } else {
+        campaignCheckQuery += ` WHERE rc.id = $1`;
+    }
+
+    const campaignResult = await pool.query(campaignCheckQuery, queryParams);
+    if (campaignResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Campanha não encontrada ou acesso negado' });
+    }
+
+    // 2. Get Steps
+    const stepsResult = await pool.query(
+        `SELECT * FROM remarketing_steps WHERE campaign_id = $1 ORDER BY step_order ASC`,
+        [id]
+    );
+    const steps = stepsResult.rows;
+
+    if (steps.length === 0) {
+        return res.json({ success: true, message: 'Campanha sem passos para testar' });
+    }
+
+    // 3. Get Instance Config
+    const instanceResult = await pool.query(
+        `SELECT * FROM evolution_instances WHERE id = $1`,
+        [instance_id]
+    );
+    if (instanceResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Instância Evolution não encontrada' });
+    }
+    const instance = instanceResult.rows[0];
+
+    // 4. Send Messages Logic
+    const cleanPhone = target_number.replace(/\D/g, '');
+    
+    // Helper to send message via Evolution
+    const sendMessage = async (content, type, delay) => {
+        let endpoint = '/message/sendText';
+        let payload = {
+            number: cleanPhone,
+            delay: delay,
+            linkPreview: false
+        };
+        
+        // Mock variable replacement
+        const mockData = {
+            name: 'Visitante Teste',
+            nome: 'Visitante Teste',
+            email: 'teste@exemplo.com',
+            phone: target_number,
+            telefone: target_number
+        };
+        
+        const replaceVars = (text) => {
+            if (!text) return '';
+            let newText = text;
+            // Replace {var} style
+            for (const [key, value] of Object.entries(mockData)) {
+                const regex = new RegExp(`\\{${key}\\}`, 'gi');
+                newText = newText.replace(regex, value);
+            }
+            // Replace {{var}} style just in case
+            for (const [key, value] of Object.entries(mockData)) {
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+                newText = newText.replace(regex, value);
+            }
+            return newText;
+        };
+
+        if (type === 'text') {
+             endpoint = '/message/sendText';
+             payload.text = replaceVars(content);
+        } else if (type === 'audio') {
+             endpoint = '/message/sendWhatsAppAudio';
+             payload.audio = content; 
+        } else if (['video', 'document', 'image'].includes(type)) {
+             endpoint = '/message/sendMedia';
+             payload.mediatype = type;
+             payload.media = content;
+             // Simple mock filename
+             if (type === 'document') payload.fileName = 'documento-teste.pdf';
+        }
+
+        const url = instance.internal_api_url || instance.api_url;
+        // Ensure url doesn't end with slash
+        const effectiveUrl = url.replace(/\/$/, '');
+        
+        try {
+            console.log(`[Test Campaign] Sending ${type} to ${cleanPhone}`);
+            await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': instance.api_key
+                },
+                body: JSON.stringify(payload)
+            });
+        } catch (e) {
+            console.error('Error sending test message:', e);
+        }
+    };
+
+    // Process steps sequentially
+    // We use a simple loop with pauses to simulate the flow
+    for (const step of steps) {
+        // Wait 2 seconds between steps for visualization in WhatsApp
+        if (steps.indexOf(step) > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        if (step.message_type === 'multi') {
+            let messages = [];
+            try {
+                messages = typeof step.message_content === 'string' 
+                    ? JSON.parse(step.message_content) 
+                    : step.message_content;
+            } catch (e) {
+                messages = [{ type: 'text', content: 'Erro ao processar mensagem múltipla' }];
+            }
+            
+            for (const msg of messages) {
+                await sendMessage(msg.content, msg.type, 1200); // 1.2s typing
+                await new Promise(resolve => setTimeout(resolve, 1500)); // wait between sub-messages
+            }
+        } else {
+            await sendMessage(step.message_content, step.message_type, 1200);
+        }
+    }
+
+    res.json({ success: true, message: 'Teste enviado com sucesso' });
+
+  } catch (error) {
+    console.error('Test campaign error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao testar campanha' });
+  }
+});
+
 module.exports = router;
