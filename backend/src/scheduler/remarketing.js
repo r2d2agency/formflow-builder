@@ -113,7 +113,7 @@ const processCampaigns = async (pool) => {
 
         for (const lead of leadsResult.rows) {
           // Send message
-          await sendMessage(pool, instance, lead, campaign, step, replaceVariables(step.message_content, lead, campaign.form_name));
+          await sendMessage(pool, instance, lead, campaign, step, step.message_content);
         }
       }
     }
@@ -140,58 +140,99 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
   // Construct API URL
   const apiUrl = instance.api_url ? instance.api_url.replace(/\/+$/, '') : '';
   const apiKey = instance.api_key.trim();
-  
-  let endpoint = '/message/sendText';
-  let body = {
-    number: cleanPhone,
-    text: content,
-    linkPreview: true
+
+  // Helper to send a single message
+  const sendSingle = async (type, msgContent) => {
+    // Replace variables in content
+    const finalContent = replaceVariables(msgContent, lead, campaign.form_name);
+
+    let endpoint = '/message/sendText';
+    let body = {
+      number: cleanPhone,
+      text: finalContent,
+      linkPreview: true
+    };
+
+    if (type !== 'text') {
+      endpoint = '/message/sendMedia';
+      
+      // Basic URL check
+      if (!finalContent.startsWith('http')) {
+          console.error('[Scheduler] Invalid media URL:', finalContent);
+          return { success: false, error: 'Invalid media URL' };
+      }
+
+      body = {
+        number: cleanPhone,
+        mediaMessage: {
+          mediatype: type, 
+          media: finalContent,
+          caption: '' 
+        }
+      };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}${endpoint}/${instance.name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey
+        },
+        body: JSON.stringify(body)
+      });
+      const resData = await res.json().catch(() => ({}));
+      return { success: res.ok, error: res.ok ? null : (resData.message || 'Unknown error') };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   };
 
-  if (step.message_type !== 'text') {
-    // Media message
-    // Assuming content is the URL for the media
-    // If content has text caption, we might need a separate field or format.
-    // For now, assume content = URL
-    endpoint = '/message/sendMedia';
-    
-    // Check if content is a valid URL
-    if (!content.startsWith('http')) {
-        await logAttempt(pool, lead.id, campaign.id, step.id, 'error', 'Invalid media URL');
-        return;
-    }
-
-    body = {
-      number: cleanPhone,
-      mediaMessage: {
-        mediatype: step.message_type, // image, video, audio, document
-        media: content, // The URL
-        caption: '' // Optional caption
-      }
-    };
-  }
-
   try {
-    const res = await fetch(`${apiUrl}${endpoint}/${instance.name}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': apiKey
-      },
-      body: JSON.stringify(body)
-    });
+    if (step.message_type === 'multi') {
+      let messages = [];
+      try {
+        messages = JSON.parse(content);
+      } catch (e) {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'error', 'Invalid JSON for multi-message');
+        return;
+      }
 
-    const resData = await res.json().catch(() => ({}));
+      if (!Array.isArray(messages)) {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'error', 'Multi-message content is not an array');
+        return;
+      }
 
-    if (res.ok) {
-      console.log(`[Scheduler] Sent ${campaign.type} message to ${cleanPhone}`);
-      await logAttempt(pool, lead.id, campaign.id, step.id, 'success');
+      let allSuccess = true;
+      let lastError = null;
+
+      for (const msg of messages) {
+        const result = await sendSingle(msg.type, msg.content);
+        if (!result.success) {
+          allSuccess = false;
+          lastError = result.error;
+        }
+        // Small delay to ensure order in queue
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      if (allSuccess) {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'success');
+      } else {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'error', lastError || 'Partial failure');
+      }
+
     } else {
-      console.error(`[Scheduler] Evolution API error:`, resData);
-      await logAttempt(pool, lead.id, campaign.id, step.id, 'error', resData.message || 'Unknown error');
+      // Single message
+      const result = await sendSingle(step.message_type, content);
+      if (result.success) {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'success');
+      } else {
+        await logAttempt(pool, lead.id, campaign.id, step.id, 'error', result.error);
+      }
     }
   } catch (error) {
-    console.error(`[Scheduler] Request error:`, error.message);
+    console.error(`[Scheduler] Unexpected error:`, error.message);
     await logAttempt(pool, lead.id, campaign.id, step.id, 'error', error.message);
   }
 };

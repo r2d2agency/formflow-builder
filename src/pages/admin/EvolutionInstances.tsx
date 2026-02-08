@@ -11,6 +11,7 @@ import {
   Activity,
   QrCode,
   Wifi,
+  LogOut,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,9 +72,11 @@ import {
   useDeleteEvolutionInstance,
   useTestEvolutionInstance,
   useConnectEvolutionInstance,
+  useDisconnectEvolutionInstance,
 } from '@/hooks/useEvolutionInstances';
 import type { EvolutionInstance } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -96,12 +99,16 @@ const EvolutionInstances: React.FC = () => {
   const [qrCodeData, setQrCodeData] = useState<{ base64?: string; pairingCode?: string } | null>(null);
   const [connectingInstance, setConnectingInstance] = useState<string | null>(null);
 
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const { data: instances, isLoading, error: loadErrorMessage } = useEvolutionInstances();
   const createInstance = useCreateEvolutionInstance();
   const updateInstance = useUpdateEvolutionInstance();
   const deleteInstance = useDeleteEvolutionInstance();
   const testInstance = useTestEvolutionInstance();
   const connectInstance = useConnectEvolutionInstance();
+  const disconnectInstance = useDisconnectEvolutionInstance();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -198,6 +205,16 @@ const EvolutionInstances: React.FC = () => {
     }
   };
 
+  const handleDisconnect = async (id: string) => {
+    if (confirm('Tem certeza que deseja desconectar esta instância do WhatsApp?')) {
+        try {
+            await disconnectInstance.mutateAsync(id);
+        } catch (error) {
+            // Error handled by mutation
+        }
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -209,10 +226,12 @@ const EvolutionInstances: React.FC = () => {
               Configure suas instâncias da Evolution API para notificações WhatsApp
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Instância
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Instância
+            </Button>
+          )}
         </div>
 
         {/* Info Card */}
@@ -264,14 +283,16 @@ const EvolutionInstances: React.FC = () => {
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">Nenhuma instância configurada</h3>
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Comece criando sua primeira instância da Evolution API.
-                </p>
-                <Button onClick={() => handleOpenDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nova Instância
-                </Button>
-              </CardContent>
-            </Card>
+                    Comece criando sua primeira instância da Evolution API.
+                  </p>
+                  {isAdmin && (
+                    <Button onClick={() => handleOpenDialog()}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nova Instância
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
           ) : (
             instances?.map((instance) => (
               <Card key={instance.id} className="relative overflow-hidden">
@@ -291,20 +312,28 @@ const EvolutionInstances: React.FC = () => {
                         <QrCode className="mr-2 h-4 w-4" />
                         Ler QR Code
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenDialog(instance)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Editar
+                      <DropdownMenuItem onClick={() => handleDisconnect(instance.id)}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Desconectar
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          setInstanceToDelete(instance.id);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <>
+                          <DropdownMenuItem onClick={() => handleOpenDialog(instance)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setInstanceToDelete(instance.id);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

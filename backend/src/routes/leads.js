@@ -170,16 +170,26 @@ router.get('/form/:formId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(
-      `SELECT l.*, f.name as form_name
-       FROM leads l
-       JOIN forms f ON l.form_id = f.id
-       WHERE l.id = $1`,
-      [req.params.id]
-    );
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    let query = `
+      SELECT l.*, f.name as form_name
+      FROM leads l
+      JOIN forms f ON l.form_id = f.id
+      WHERE l.id = $1
+    `;
+    const params = [req.params.id];
+
+    if (!isAdmin) {
+        query += ` AND l.form_id IN (SELECT form_id FROM user_forms WHERE user_id = $2)`;
+        params.push(userId);
+    }
+
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Lead não encontrado' });
+      return res.status(404).json({ success: false, error: 'Lead não encontrado ou acesso negado' });
     }
 
     res.json({ success: true, data: result.rows[0] });
@@ -298,6 +308,8 @@ router.get('/export/csv', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const formId = req.query.form_id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
     let query = `
       SELECT l.id, l.data, l.source, l.ip_address, l.created_at, f.name as form_name
@@ -305,10 +317,24 @@ router.get('/export/csv', async (req, res) => {
       JOIN forms f ON l.form_id = f.id
     `;
     const params = [];
+    let paramCount = 1;
+
+    const conditions = [];
 
     if (formId) {
-      query += ' WHERE l.form_id = $1';
+      conditions.push(`l.form_id = $${paramCount}`);
       params.push(formId);
+      paramCount++;
+    }
+
+    if (!isAdmin) {
+        conditions.push(`l.form_id IN (SELECT form_id FROM user_forms WHERE user_id = $${paramCount})`);
+        params.push(userId);
+        paramCount++;
+    }
+
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY l.created_at DESC';
@@ -345,6 +371,8 @@ router.get('/export/excel', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const formId = req.query.form_id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
     let query = `
       SELECT l.id, l.data, l.source, l.ip_address, l.created_at, f.name as form_name, f.fields
@@ -352,10 +380,24 @@ router.get('/export/excel', async (req, res) => {
       JOIN forms f ON l.form_id = f.id
     `;
     const params = [];
+    let paramCount = 1;
+
+    const conditions = [];
 
     if (formId) {
-      query += ' WHERE l.form_id = $1';
+      conditions.push(`l.form_id = $${paramCount}`);
       params.push(formId);
+      paramCount++;
+    }
+
+    if (!isAdmin) {
+        conditions.push(`l.form_id IN (SELECT form_id FROM user_forms WHERE user_id = $${paramCount})`);
+        params.push(userId);
+        paramCount++;
+    }
+
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY l.created_at DESC';

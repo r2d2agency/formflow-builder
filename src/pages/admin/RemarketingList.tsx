@@ -18,13 +18,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useFileUpload } from '@/hooks/useFileUpload';
 
+interface MessageItem {
+  type: 'text' | 'image' | 'video' | 'audio' | 'document';
+  content: string;
+}
+
 interface RemarketingStep {
   id: string;
   campaign_id: string;
   step_order: number;
   delay_value: number;
   delay_unit: 'minutes' | 'hours' | 'days';
-  message_type: 'text' | 'audio' | 'video' | 'document' | 'image';
+  message_type: 'text' | 'audio' | 'video' | 'document' | 'image' | 'multi';
   message_content: string;
 }
 
@@ -116,6 +121,7 @@ const RemarketingList: React.FC = () => {
   // --- Step Dialog State ---
   const [stepMessageType, setStepMessageType] = useState<'text' | 'image' | 'video' | 'audio' | 'document'>('text');
   const [stepMessageContent, setStepMessageContent] = useState('');
+  const [stepMessages, setStepMessages] = useState<MessageItem[]>([]);
   const { uploadFile, isUploading, progress } = useFileUpload();
 
   const handleCreateCampaign = (e: React.FormEvent) => {
@@ -137,22 +143,59 @@ const RemarketingList: React.FC = () => {
     setEditingCampaign(null);
   };
 
+  const handleAddMessage = () => {
+    if (!stepMessageContent) return;
+    setStepMessages([...stepMessages, { type: stepMessageType, content: stepMessageContent }]);
+    setStepMessageContent('');
+    toast({ title: "Mensagem adicionada ao passo" });
+  };
+
+  const handleRemoveMessage = (index: number) => {
+    const newMsgs = [...stepMessages];
+    newMsgs.splice(index, 1);
+    setStepMessages(newMsgs);
+  };
+
   const handleCreateStep = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+    
+    // Determine content
+    let finalType: any = 'text';
+    let finalContent = '';
+
+    if (stepMessages.length > 0) {
+      // Prioritize the list
+      if (stepMessages.length === 1) {
+        finalType = stepMessages[0].type;
+        finalContent = stepMessages[0].content;
+      } else {
+        finalType = 'multi';
+        finalContent = JSON.stringify(stepMessages);
+      }
+    } else if (stepMessageContent) {
+      // Fallback to current input if list is empty
+      finalType = stepMessageType;
+      finalContent = stepMessageContent;
+    } else {
+      toast({ title: "Adicione pelo menos uma mensagem", variant: "destructive" });
+      return;
+    }
+
     const data = {
       campaign_id: activeCampaignId,
       step_order: parseInt(formData.get('step_order') as string),
       delay_value: parseInt(formData.get('delay_value') as string),
       delay_unit: formData.get('delay_unit'),
-      message_type: stepMessageType,
-      message_content: stepMessageContent,
+      message_type: finalType,
+      message_content: finalContent,
     };
     createStep.mutate(data);
     setIsStepDialogOpen(false);
     // Reset states
     setStepMessageType('text');
     setStepMessageContent('');
+    setStepMessages([]);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -473,6 +516,51 @@ const RemarketingList: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Add Message Button */}
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    className="w-full mt-2"
+                    onClick={handleAddMessage}
+                    disabled={!stepMessageContent}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar à Sequência
+                  </Button>
+
+                  {/* Message List */}
+                  {stepMessages.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <Label>Sequência de Mensagens ({stepMessages.length})</Label>
+                      <div className="bg-muted rounded-md p-2 space-y-2 max-h-[200px] overflow-y-auto">
+                        {stepMessages.map((msg, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-background p-2 rounded border text-sm">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {idx + 1}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {msg.type}
+                              </Badge>
+                              <span className="truncate max-w-[150px]">
+                                {msg.type === 'text' ? msg.content : 'Mídia'}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive shrink-0"
+                              onClick={() => handleRemoveMessage(idx)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </form>
 
@@ -489,49 +577,51 @@ const RemarketingList: React.FC = () => {
                   className="mt-14 h-[400px] overflow-y-auto p-4 space-y-4 bg-[#efeae2]"
                   style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }}
                 >
-                  <div className="bg-white rounded-lg p-3 shadow-sm max-w-[85%] relative">
-                    {stepMessageType === 'text' ? (
-                      <p className="whitespace-pre-wrap text-sm text-gray-800">
-                        {stepMessageContent || 'Sua mensagem aparecerá aqui...'}
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {stepMessageContent ? (
-                          <>
-                            {stepMessageType === 'image' && (
-                              <img src={stepMessageContent} alt="Preview" className="w-full rounded-lg" />
-                            )}
-                            {stepMessageType === 'video' && (
-                              <video src={stepMessageContent} controls className="w-full rounded-lg" />
-                            )}
-                            {stepMessageType === 'audio' && (
-                              <audio src={stepMessageContent} controls className="w-full" />
-                            )}
-                            {stepMessageType === 'document' && (
-                              <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
-                                <FileIcon className="h-8 w-8 text-red-500" />
-                                <div className="overflow-hidden">
-                                  <p className="text-sm font-medium truncate">Documento</p>
-                                  <p className="text-xs text-muted-foreground truncate">{stepMessageContent}</p>
+                  {(stepMessages.length > 0 ? stepMessages : [{ type: stepMessageType, content: stepMessageContent }]).map((msg, idx) => (
+                    <div key={idx} className="bg-white rounded-lg p-3 shadow-sm max-w-[85%] relative mb-2">
+                      {msg.type === 'text' ? (
+                        <p className="whitespace-pre-wrap text-sm text-gray-800">
+                          {msg.content || 'Sua mensagem aparecerá aqui...'}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {msg.content ? (
+                            <>
+                              {msg.type === 'image' && (
+                                <img src={msg.content} alt="Preview" className="w-full rounded-lg" />
+                              )}
+                              {msg.type === 'video' && (
+                                <video src={msg.content} controls className="w-full rounded-lg" />
+                              )}
+                              {msg.type === 'audio' && (
+                                <audio src={msg.content} controls className="w-full" />
+                              )}
+                              {msg.type === 'document' && (
+                                <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                                  <FileIcon className="h-8 w-8 text-red-500" />
+                                  <div className="overflow-hidden">
+                                    <p className="text-sm font-medium truncate">Documento</p>
+                                    <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center p-8 bg-gray-100 rounded-lg text-gray-400">
-                            {stepMessageType === 'image' && <ImageIcon className="h-12 w-12" />}
-                            {stepMessageType === 'video' && <VideoIcon className="h-12 w-12" />}
-                            {stepMessageType === 'audio' && <Mic className="h-12 w-12" />}
-                            {stepMessageType === 'document' && <FileIcon className="h-12 w-12" />}
-                            <p className="text-sm mt-2">Aguardando conteúdo...</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <span className="text-[10px] text-gray-500 absolute bottom-1 right-2">
-                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center p-8 bg-gray-100 rounded-lg text-gray-400">
+                              {msg.type === 'image' && <ImageIcon className="h-12 w-12" />}
+                              {msg.type === 'video' && <VideoIcon className="h-12 w-12" />}
+                              {msg.type === 'audio' && <Mic className="h-12 w-12" />}
+                              {msg.type === 'document' && <FileIcon className="h-12 w-12" />}
+                              <p className="text-sm mt-2">Aguardando conteúdo...</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <span className="text-[10px] text-gray-500 absolute bottom-1 right-2">
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -177,6 +177,34 @@ export const useConnectEvolutionInstance = () => {
   });
 };
 
+export const useDisconnectEvolutionInstance = () => {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiService.post<{ success: boolean }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCE_BY_ID(id)}/disconnect`,
+        {}
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Desconectado',
+        description: 'Instância desconectada com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao desconectar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useSendTestMessage = () => {
   return useMutation({
     mutationFn: async ({ id, phone, message, type, media_url, filename }: { 

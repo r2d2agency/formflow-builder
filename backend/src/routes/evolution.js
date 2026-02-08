@@ -133,6 +133,12 @@ const createEvolutionService = (instance) => {
           delay: 1200
         })
       });
+    },
+
+    disconnect: async () => {
+      return _fetch(`/instance/logout/${instanceName}`, {
+        method: 'DELETE',
+      });
     }
   };
 };
@@ -140,7 +146,46 @@ const createEvolutionService = (instance) => {
 // Apply auth middleware
 router.use(authMiddleware);
 
-// Middleware to check if user is admin
+// Middleware to check instance access (Admin or Assigned User)
+const checkInstanceAccess = async (req, res, next) => {
+  if (req.user.role === 'admin') return next();
+
+  const instanceId = req.params.id;
+  const userId = req.user.id;
+  const pool = req.app.locals.pool;
+
+  try {
+    // Check if user has access to any form that uses this instance
+    const result = await pool.query(`
+      SELECT 1 
+      FROM user_forms uf
+      JOIN forms f ON uf.form_id = f.id
+      WHERE uf.user_id = $1
+        AND f.settings->>'evolution_instance_id' = $2
+    `, [userId, instanceId]);
+
+    if (result.rows.length > 0) {
+      return next();
+    }
+    
+    // Also check if the user OWNS the instance
+    const ownerCheck = await pool.query(
+        'SELECT 1 FROM evolution_instances WHERE id = $1 AND user_id = $2',
+        [instanceId, userId]
+    );
+    
+    if (ownerCheck.rows.length > 0) {
+        return next();
+    }
+
+    return res.status(403).json({ success: false, error: 'Acesso negado a esta instância' });
+  } catch (error) {
+    console.error('Permission check error:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao verificar permissões' });
+  }
+};
+
+// Middleware to check if user is admin (for sensitive operations)
 const adminOnly = (req, res, next) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
@@ -148,18 +193,32 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-router.use(adminOnly);
-
 // GET /api/evolution-instances
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const userId = req.user.id;
-    // Filter by user_id
-    const result = await pool.query(
-      'SELECT * FROM evolution_instances WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
+    const isAdmin = req.user.role === 'admin';
+
+    let query;
+    let params = [userId];
+
+    if (isAdmin) {
+      // Admin sees their own instances
+      query = 'SELECT * FROM evolution_instances WHERE user_id = $1 ORDER BY created_at DESC';
+    } else {
+      // User sees instances linked to their forms
+      query = `
+          SELECT DISTINCT ei.*
+          FROM evolution_instances ei
+          JOIN forms f ON f.settings->>'evolution_instance_id' = ei.id::text
+          JOIN user_forms uf ON uf.form_id = f.id
+          WHERE uf.user_id = $1
+          ORDER BY ei.created_at DESC
+      `;
+    }
+
+    const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Get evolution instances error:', error);
@@ -168,13 +227,13 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/evolution-instances/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkInstanceAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const userId = req.user.id;
+    // No need to filter by user_id here as checkInstanceAccess handles it
     const result = await pool.query(
-      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
-      [req.params.id, userId]
+      'SELECT * FROM evolution_instances WHERE id = $1', 
+      [req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -190,13 +249,12 @@ router.get('/:id', async (req, res) => {
 
 // GET /api/evolution-instances/:id/connect
 // Returns connection status or QR Code
-router.get('/:id/connect', async (req, res) => {
+router.get('/:id/connect', checkInstanceAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const userId = req.user.id;
     const result = await pool.query(
-      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
-      [req.params.id, userId]
+      'SELECT * FROM evolution_instances WHERE id = $1', 
+      [req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -218,8 +276,36 @@ router.get('/:id/connect', async (req, res) => {
   }
 });
 
+// POST /api/evolution-instances/:id/disconnect
+router.post('/:id/disconnect', checkInstanceAccess, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1', 
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Instância não encontrada' });
+    }
+
+    const instance = result.rows[0];
+    const service = createEvolutionService(instance);
+
+    try {
+      const data = await service.disconnect();
+      res.json({ success: true, data });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message, details: error });
+    }
+  } catch (error) {
+    console.error('Disconnect evolution instance error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao desconectar instância' });
+  }
+});
+
 // POST /api/evolution-instances
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const userId = req.user.id;
@@ -245,7 +331,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/evolution-instances/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const userId = req.user.id;
@@ -271,7 +357,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/evolution-instances/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const userId = req.user.id;
@@ -293,13 +379,13 @@ router.delete('/:id', async (req, res) => {
 
 // POST /api/evolution-instances/:id/test
 // Tests connection and returns status
-router.post('/:id/test', async (req, res) => {
+router.post('/:id/test', checkInstanceAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const userId = req.user.id;
+    // const userId = req.user.id; // Removed user_id check as checkInstanceAccess handles it
     const result = await pool.query(
-      'SELECT * FROM evolution_instances WHERE id = $1 AND user_id = $2', 
-      [req.params.id, userId]
+      'SELECT * FROM evolution_instances WHERE id = $1', 
+      [req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -349,7 +435,7 @@ router.post('/:id/test', async (req, res) => {
 });
 
 // POST /api/evolution-instances/:id/send-test
-router.post('/:id/send-test', async (req, res) => {
+router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { phone, message, type = 'text', media_url, filename } = req.body;

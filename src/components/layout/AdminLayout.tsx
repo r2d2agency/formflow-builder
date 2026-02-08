@@ -41,7 +41,7 @@ const navigation = [
   { name: 'Links', href: '/admin/links', icon: Link2, adminOnly: true },
   { name: 'Logs de Integração', href: '/admin/integrations-logs', icon: Activity, adminOnly: true },
   { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
-  { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare, adminOnly: true },
+  { name: 'Evolution API', href: '/admin/evolution', icon: MessageSquare },
   { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook, adminOnly: true },
   { name: 'Branding', href: '/admin/branding', icon: Palette, adminOnly: true },
   { name: 'Configurações', href: '/admin/settings', icon: Settings, adminOnly: true },

@@ -1,7 +1,34 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth');
 
+// --- Migration Helper (Temporary) ---
+router.get('/migrate-schema', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    
+    // 1. Drop the constraint
+    try {
+      await pool.query('ALTER TABLE remarketing_steps DROP CONSTRAINT IF EXISTS remarketing_steps_message_type_check');
+      console.log('Dropped old constraint');
+    } catch (e) {
+      console.log('Constraint might not exist or different name:', e.message);
+    }
+
+    // 2. Add new constraint
+    await pool.query(`
+      ALTER TABLE remarketing_steps 
+      ADD CONSTRAINT remarketing_steps_message_type_check 
+      CHECK (message_type IN ('text', 'audio', 'video', 'document', 'image', 'multi'))
+    `);
+
+    res.json({ success: true, message: 'Schema updated for multi-message support' });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const authMiddleware = require('../middleware/auth');
 router.use(authMiddleware);
 
 // --- Campaigns ---
@@ -11,6 +38,19 @@ router.get('/campaigns/:formId', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { formId } = req.params;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        'SELECT 1 FROM user_forms WHERE user_id = $1 AND form_id = $2',
+        [userId, formId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a este formulário' });
+      }
+    }
 
     const result = await pool.query(
       `SELECT * FROM remarketing_campaigns 
@@ -43,6 +83,19 @@ router.post('/campaigns', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { form_id, name, type, is_active } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        'SELECT 1 FROM user_forms WHERE user_id = $1 AND form_id = $2',
+        [userId, form_id]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a este formulário' });
+      }
+    }
 
     const result = await pool.query(
       `INSERT INTO remarketing_campaigns (form_id, name, type, is_active)
@@ -64,6 +117,21 @@ router.put('/campaigns/:id', async (req, res) => {
     const pool = req.app.locals.pool;
     const { id } = req.params;
     const { name, is_active } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission if not admin
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        `SELECT 1 FROM remarketing_campaigns rc
+         JOIN user_forms uf ON rc.form_id = uf.form_id
+         WHERE rc.id = $1 AND uf.user_id = $2`,
+        [id, userId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a esta campanha' });
+      }
+    }
 
     const result = await pool.query(
       `UPDATE remarketing_campaigns 
@@ -89,6 +157,21 @@ router.delete('/campaigns/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { id } = req.params;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission if not admin
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        `SELECT 1 FROM remarketing_campaigns rc
+         JOIN user_forms uf ON rc.form_id = uf.form_id
+         WHERE rc.id = $1 AND uf.user_id = $2`,
+        [id, userId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a esta campanha' });
+      }
+    }
 
     await pool.query('DELETE FROM remarketing_campaigns WHERE id = $1', [id]);
 
@@ -106,6 +189,21 @@ router.post('/steps', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { campaign_id, step_order, delay_value, delay_unit, message_type, message_content } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission if not admin
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        `SELECT 1 FROM remarketing_campaigns rc
+         JOIN user_forms uf ON rc.form_id = uf.form_id
+         WHERE rc.id = $1 AND uf.user_id = $2`,
+        [campaign_id, userId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a esta campanha' });
+      }
+    }
 
     const result = await pool.query(
       `INSERT INTO remarketing_steps (campaign_id, step_order, delay_value, delay_unit, message_type, message_content)
@@ -127,6 +225,22 @@ router.put('/steps/:id', async (req, res) => {
     const pool = req.app.locals.pool;
     const { id } = req.params;
     const { step_order, delay_value, delay_unit, message_type, message_content } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission if not admin
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        `SELECT 1 FROM remarketing_steps rs
+         JOIN remarketing_campaigns rc ON rs.campaign_id = rc.id
+         JOIN user_forms uf ON rc.form_id = uf.form_id
+         WHERE rs.id = $1 AND uf.user_id = $2`,
+        [id, userId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a este passo' });
+      }
+    }
 
     const result = await pool.query(
       `UPDATE remarketing_steps 
@@ -152,6 +266,22 @@ router.delete('/steps/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { id } = req.params;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    // Check permission if not admin
+    if (!isAdmin) {
+      const permCheck = await pool.query(
+        `SELECT 1 FROM remarketing_steps rs
+         JOIN remarketing_campaigns rc ON rs.campaign_id = rc.id
+         JOIN user_forms uf ON rc.form_id = uf.form_id
+         WHERE rs.id = $1 AND uf.user_id = $2`,
+        [id, userId]
+      );
+      if (permCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Acesso negado a este passo' });
+      }
+    }
 
     await pool.query('DELETE FROM remarketing_steps WHERE id = $1', [id]);
 
