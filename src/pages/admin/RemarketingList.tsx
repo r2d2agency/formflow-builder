@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit2, Timer, Send, MessageSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiService from '@/services/api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -45,7 +45,7 @@ const RemarketingList: React.FC = () => {
     queryKey: ['remarketing-campaigns', selectedFormId],
     queryFn: async () => {
       if (!selectedFormId) return [];
-      const res = await apiService.get<RemarketingCampaign[]>(`/api/remarketing/campaigns/${selectedFormId}`);
+      const res = await apiService.get<RemarketingCampaign[]>(`/remarketing/campaigns/${selectedFormId}`);
       return res.data || [];
     },
     enabled: !!selectedFormId,
@@ -54,7 +54,7 @@ const RemarketingList: React.FC = () => {
   // --- Mutations ---
   const createCampaign = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiService.post('/api/remarketing/campaigns', data);
+      const res = await apiService.post('/remarketing/campaigns', data);
       return res.data;
     },
     onSuccess: () => {
@@ -65,7 +65,7 @@ const RemarketingList: React.FC = () => {
 
   const deleteCampaign = useMutation({
     mutationFn: async (id: string) => {
-      await apiService.delete(`/api/remarketing/campaigns/${id}`);
+      await apiService.delete(`/remarketing/campaigns/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remarketing-campaigns'] });
@@ -75,7 +75,7 @@ const RemarketingList: React.FC = () => {
 
   const updateCampaign = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await apiService.put(`/api/remarketing/campaigns/${id}`, data);
+      const res = await apiService.put(`/remarketing/campaigns/${id}`, data);
       return res.data;
     },
     onSuccess: () => {
@@ -97,7 +97,7 @@ const RemarketingList: React.FC = () => {
 
   const deleteStep = useMutation({
     mutationFn: async (id: string) => {
-      await apiService.delete(`/api/remarketing/steps/${id}`);
+      await apiService.delete(`/remarketing/steps/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remarketing-campaigns'] });
@@ -285,6 +285,9 @@ const RemarketingList: React.FC = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}</DialogTitle>
+              <DialogDescription>
+                Configure os detalhes da sua campanha de remarketing.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCampaign} className="space-y-4">
               <div className="space-y-2">
@@ -322,6 +325,9 @@ const RemarketingList: React.FC = () => {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Adicionar Passo</DialogTitle>
+              <DialogDescription>
+                Configure a mensagem e o tempo de envio para este passo da campanha.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateStep} className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
