@@ -4,7 +4,7 @@ import { useForms } from '@/hooks/useForms';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Timer, Send, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Edit2, Timer, Send, MessageSquare, Upload, FileIcon, ImageIcon, VideoIcon, Mic, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiService from '@/services/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -15,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 interface RemarketingStep {
   id: string;
@@ -111,6 +113,11 @@ const RemarketingList: React.FC = () => {
   const [isStepDialogOpen, setIsStepDialogOpen] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
 
+  // --- Step Dialog State ---
+  const [stepMessageType, setStepMessageType] = useState<'text' | 'image' | 'video' | 'audio' | 'document'>('text');
+  const [stepMessageContent, setStepMessageContent] = useState('');
+  const { uploadFile, isUploading, progress } = useFileUpload();
+
   const handleCreateCampaign = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -138,11 +145,29 @@ const RemarketingList: React.FC = () => {
       step_order: parseInt(formData.get('step_order') as string),
       delay_value: parseInt(formData.get('delay_value') as string),
       delay_unit: formData.get('delay_unit'),
-      message_type: formData.get('message_type'),
-      message_content: formData.get('message_content'),
+      message_type: stepMessageType,
+      message_content: stepMessageContent,
     };
     createStep.mutate(data);
     setIsStepDialogOpen(false);
+    // Reset states
+    setStepMessageType('text');
+    setStepMessageContent('');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    let type: 'images' | 'video' | 'audio' | 'documents' = 'documents';
+    if (stepMessageType === 'image') type = 'images';
+    if (stepMessageType === 'video') type = 'video';
+    if (stepMessageType === 'audio') type = 'audio';
+
+    const result = await uploadFile(file, type);
+    if (result) {
+      setStepMessageContent(result.url);
+    }
   };
 
   return (
@@ -322,72 +347,201 @@ const RemarketingList: React.FC = () => {
 
         {/* Step Dialog */}
         <Dialog open={isStepDialogOpen} onOpenChange={setIsStepDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Adicionar Passo</DialogTitle>
               <DialogDescription>
                 Configure a mensagem e o tempo de envio para este passo da campanha.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleCreateStep} className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="step_order">Ordem</Label>
-                  <Input id="step_order" name="step_order" type="number" defaultValue="1" required min="1" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Form Side */}
+              <form id="step-form" onSubmit={handleCreateStep} className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="step_order">Ordem</Label>
+                    <Input id="step_order" name="step_order" type="number" defaultValue="1" required min="1" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="delay_value">Atraso</Label>
+                    <Input id="delay_value" name="delay_value" type="number" defaultValue="5" required min="1" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="delay_unit">Unidade</Label>
+                    <Select name="delay_unit" defaultValue="minutes">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="minutes">Minutos</SelectItem>
+                        <SelectItem value="hours">Horas</SelectItem>
+                        <SelectItem value="days">Dias</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="delay_value">Atraso</Label>
-                  <Input id="delay_value" name="delay_value" type="number" defaultValue="5" required min="1" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="delay_unit">Unidade</Label>
-                  <Select name="delay_unit" defaultValue="minutes">
+                  <Label htmlFor="message_type">Tipo de Mensagem</Label>
+                  <Select 
+                    name="message_type" 
+                    value={stepMessageType} 
+                    onValueChange={(v: any) => {
+                      setStepMessageType(v);
+                      setStepMessageContent('');
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="minutes">Minutos</SelectItem>
-                      <SelectItem value="hours">Horas</SelectItem>
-                      <SelectItem value="days">Dias</SelectItem>
+                      <SelectItem value="text">Texto</SelectItem>
+                      <SelectItem value="image">Imagem</SelectItem>
+                      <SelectItem value="video">Vídeo</SelectItem>
+                      <SelectItem value="audio">Áudio</SelectItem>
+                      <SelectItem value="document">Documento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message_type">Tipo de Mensagem</Label>
-                <Select name="message_type" defaultValue="text">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Texto</SelectItem>
-                    <SelectItem value="image">Imagem (URL)</SelectItem>
-                    <SelectItem value="video">Vídeo (URL)</SelectItem>
-                    <SelectItem value="audio">Áudio (URL)</SelectItem>
-                    <SelectItem value="document">Documento (URL)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label>Conteúdo da Mensagem</Label>
+                  
+                  {stepMessageType === 'text' ? (
+                    <div className="space-y-2">
+                      <Textarea 
+                        id="message_content" 
+                        value={stepMessageContent}
+                        onChange={(e) => setStepMessageContent(e.target.value)}
+                        rows={5} 
+                        required 
+                        placeholder="Digite a mensagem..." 
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use {'{{name}}'} para o nome do lead.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="file-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 hover:bg-muted/50 transition-colors">
+                            <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">
+                              Clique para fazer upload do arquivo
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              {stepMessageType === 'image' && 'JPG, PNG, GIF'}
+                              {stepMessageType === 'video' && 'MP4, WebM'}
+                              {stepMessageType === 'audio' && 'MP3, WAV, OGG'}
+                              {stepMessageType === 'document' && 'PDF, DOC, DOCX'}
+                            </span>
+                          </div>
+                        </Label>
+                        <Input 
+                          id="file-upload" 
+                          type="file" 
+                          className="hidden" 
+                          onChange={handleFileUpload}
+                          accept={
+                            stepMessageType === 'image' ? 'image/*' :
+                            stepMessageType === 'video' ? 'video/*' :
+                            stepMessageType === 'audio' ? 'audio/*' :
+                            '.pdf,.doc,.docx'
+                          }
+                        />
+                      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message_content">Conteúdo</Label>
-                <Textarea 
-                  id="message_content" 
-                  name="message_content" 
-                  rows={5} 
-                  required 
-                  placeholder="Digite a mensagem ou a URL da mídia. Variáveis disponíveis: {{name}}, {{form_name}} e outros campos do formulário." 
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use {'{{name}}'} para o nome do lead.
-                </p>
-              </div>
+                      {isUploading && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span>Enviando...</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <Progress value={progress} />
+                        </div>
+                      )}
 
-              <DialogFooter>
-                <Button type="submit">Salvar</Button>
-              </DialogFooter>
-            </form>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Ou insira a URL manualmente:</Label>
+                        <Input 
+                          value={stepMessageContent}
+                          onChange={(e) => setStepMessageContent(e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+
+              {/* Preview Side */}
+              <div className="bg-slate-100 rounded-xl p-4 border relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-12 bg-[#00a884] flex items-center px-4 text-white z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-slate-200" />
+                    <span className="font-medium">Preview</span>
+                  </div>
+                </div>
+                
+                <div 
+                  className="mt-14 h-[400px] overflow-y-auto p-4 space-y-4 bg-[#efeae2]"
+                  style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }}
+                >
+                  <div className="bg-white rounded-lg p-3 shadow-sm max-w-[85%] relative">
+                    {stepMessageType === 'text' ? (
+                      <p className="whitespace-pre-wrap text-sm text-gray-800">
+                        {stepMessageContent || 'Sua mensagem aparecerá aqui...'}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {stepMessageContent ? (
+                          <>
+                            {stepMessageType === 'image' && (
+                              <img src={stepMessageContent} alt="Preview" className="w-full rounded-lg" />
+                            )}
+                            {stepMessageType === 'video' && (
+                              <video src={stepMessageContent} controls className="w-full rounded-lg" />
+                            )}
+                            {stepMessageType === 'audio' && (
+                              <audio src={stepMessageContent} controls className="w-full" />
+                            )}
+                            {stepMessageType === 'document' && (
+                              <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                                <FileIcon className="h-8 w-8 text-red-500" />
+                                <div className="overflow-hidden">
+                                  <p className="text-sm font-medium truncate">Documento</p>
+                                  <p className="text-xs text-muted-foreground truncate">{stepMessageContent}</p>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center p-8 bg-gray-100 rounded-lg text-gray-400">
+                            {stepMessageType === 'image' && <ImageIcon className="h-12 w-12" />}
+                            {stepMessageType === 'video' && <VideoIcon className="h-12 w-12" />}
+                            {stepMessageType === 'audio' && <Mic className="h-12 w-12" />}
+                            {stepMessageType === 'document' && <FileIcon className="h-12 w-12" />}
+                            <p className="text-sm mt-2">Aguardando conteúdo...</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <span className="text-[10px] text-gray-500 absolute bottom-1 right-2">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsStepDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" form="step-form" disabled={isUploading}>
+                {isUploading ? 'Enviando...' : 'Salvar'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
