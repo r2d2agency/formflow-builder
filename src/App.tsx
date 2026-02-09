@@ -94,7 +94,7 @@ const App = () => (
             <Route
               path="/admin/evolution"
               element={
-                <ProtectedRoute adminOnly>
+                <ProtectedRoute>
                   <EvolutionInstances />
                 </ProtectedRoute>
               }
