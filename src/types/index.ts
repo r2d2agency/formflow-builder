@@ -152,6 +152,8 @@ export interface EvolutionInstance {
   api_key: string;
   default_number?: string;
   is_active: boolean;
+  user_id?: string;
+  user_name?: string;
   created_at: string;
   updated_at: string;
 }

@@ -204,16 +204,23 @@ router.get('/', async (req, res) => {
     let params = [userId];
 
     if (isAdmin) {
-      // Admin sees their own instances
-      query = 'SELECT * FROM evolution_instances WHERE user_id = $1 ORDER BY created_at DESC';
+      // Admin sees ALL instances with user info
+      query = `
+        SELECT ei.*, u.name as user_name, u.email as user_email 
+        FROM evolution_instances ei 
+        LEFT JOIN users u ON ei.user_id = u.id 
+        ORDER BY ei.created_at DESC
+      `;
+      params = [];
     } else {
-      // User sees instances linked to their forms
+      // User sees instances OWNED by them OR linked to their forms
       query = `
           SELECT DISTINCT ei.*
           FROM evolution_instances ei
-          JOIN forms f ON f.settings->>'evolution_instance_id' = ei.id::text
-          JOIN user_forms uf ON uf.form_id = f.id
-          WHERE uf.user_id = $1
+          LEFT JOIN forms f ON f.settings->>'evolution_instance_id' = ei.id::text
+          LEFT JOIN user_forms uf ON uf.form_id = f.id
+          WHERE ei.user_id = $1 
+             OR uf.user_id = $1
           ORDER BY ei.created_at DESC
       `;
     }
@@ -308,19 +315,22 @@ router.post('/:id/disconnect', checkInstanceAccess, async (req, res) => {
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const userId = req.user.id;
-    const { name, api_url, api_key, default_number, is_active } = req.body;
+    const currentUserId = req.user.id;
+    const { name, api_url, api_key, default_number, is_active, user_id } = req.body;
 
     // Basic validation
     if (!name || !api_url || !api_key) {
       return res.status(400).json({ success: false, error: 'Nome, URL e API Key são obrigatórios' });
     }
 
+    // If admin provides user_id, use it; otherwise use current admin's id
+    const targetUserId = user_id || currentUserId;
+
     const result = await pool.query(
       `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active, user_id)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true, userId]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true, targetUserId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -334,16 +344,29 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const userId = req.user.id;
-    const { name, api_url, api_key, default_number, is_active } = req.body;
+    const currentUserId = req.user.id;
+    const { name, api_url, api_key, default_number, is_active, user_id } = req.body;
 
-    const result = await pool.query(
-      `UPDATE evolution_instances 
+    // Build update query dynamically based on provided fields
+    // Admin can update any instance, regardless of ownership
+    
+    // If user_id is provided (transfer ownership), include it
+    let query = `
+       UPDATE evolution_instances 
        SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
-       WHERE id = $6 AND user_id = $7
-       RETURNING *`,
-      [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id, userId]
-    );
+    `;
+    const params = [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id];
+    
+    if (user_id) {
+        query += `, user_id = $7 WHERE id = $6`;
+        params.push(user_id);
+    } else {
+        query += ` WHERE id = $6`;
+    }
+    
+    query += ` RETURNING *`;
+
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Instância não encontrada' });

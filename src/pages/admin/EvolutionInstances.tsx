@@ -53,6 +53,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -77,6 +84,7 @@ import {
 import type { EvolutionInstance } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUsers } from '@/hooks/useUsers';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -84,6 +92,7 @@ const formSchema = z.object({
   api_key: z.string().min(1, 'API Key é obrigatória'),
   default_number: z.string().optional(),
   is_active: z.boolean().default(true),
+  user_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -102,6 +111,7 @@ const EvolutionInstances: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
+  const { data: usersList } = useUsers();
   const { data: instances, isLoading, error: loadErrorMessage } = useEvolutionInstances();
   const createInstance = useCreateEvolutionInstance();
   const updateInstance = useUpdateEvolutionInstance();
@@ -118,6 +128,7 @@ const EvolutionInstances: React.FC = () => {
       api_key: '',
       default_number: '',
       is_active: true,
+      user_id: user?.id,
     },
   });
 
@@ -130,6 +141,7 @@ const EvolutionInstances: React.FC = () => {
         api_key: instance.api_key,
         default_number: instance.default_number || '',
         is_active: instance.is_active,
+        user_id: instance.user_id || user?.id,
       });
     } else {
       setEditingInstance(null);
@@ -139,6 +151,7 @@ const EvolutionInstances: React.FC = () => {
         api_key: '',
         default_number: '',
         is_active: true,
+        user_id: user?.id,
       });
     }
     setIsDialogOpen(true);
@@ -351,6 +364,11 @@ const EvolutionInstances: React.FC = () => {
                   <CardDescription className="truncate font-mono text-xs">
                     {instance.api_url}
                   </CardDescription>
+                  {isAdmin && instance.user_name && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                       Proprietário: <span className="font-medium">{instance.user_name}</span>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2 text-sm">
@@ -416,6 +434,37 @@ const EvolutionInstances: React.FC = () => {
                     </FormItem>
                   )}
                 />
+
+                {isAdmin && (
+                  <FormField
+                    control={form.control}
+                    name="user_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Usuário (Proprietário)</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um usuário" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {usersList?.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.name} ({u.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Quem gerenciará esta instância.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 <FormField
                   control={form.control}
                   name="api_url"
