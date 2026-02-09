@@ -288,6 +288,7 @@ const FormEditor: React.FC = () => {
                         field={field}
                         onUpdate={(updates) => handleUpdateField(field.id, updates)}
                         onRemove={() => handleRemoveField(field.id)}
+                        isQuizMode={localForm.settings?.is_quiz_mode}
                       />
                     ))}
                   </SortableContext>
@@ -413,6 +414,84 @@ const FormEditor: React.FC = () => {
                   />
                 </div>
               </CardContent>
+            </Card>
+
+            {/* Quiz Settings Card */}
+            <Card className="border-yellow-200 dark:border-yellow-900">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Check className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                      Modo Quiz
+                    </CardTitle>
+                    <CardDescription>
+                      Transforme este formulário em um quiz com pontuação e respostas
+                    </CardDescription>
+                  </div>
+                  <Switch
+                    checked={localForm.settings?.is_quiz_mode || false}
+                    onCheckedChange={(v) => handleSettingsChange('is_quiz_mode', v)}
+                  />
+                </div>
+              </CardHeader>
+              {localForm.settings?.is_quiz_mode && (
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="quiz_passing_score">Pontuação Mínima (%)</Label>
+                      <Input
+                        id="quiz_passing_score"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={localForm.settings?.quiz_passing_score || 0}
+                        onChange={(e) => handleSettingsChange('quiz_passing_score', parseInt(e.target.value) || 0)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Porcentagem de acertos para considerar aprovado
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="max_attempts_per_user">Máximo de Tentativas</Label>
+                      <Input
+                        id="max_attempts_per_user"
+                        type="number"
+                        min="1"
+                        value={localForm.settings?.max_attempts_per_user || 1}
+                        onChange={(e) => handleSettingsChange('max_attempts_per_user', parseInt(e.target.value) || 1)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Deixe 0 para tentativas ilimitadas
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="quiz_success_message">Mensagem de Aprovação</Label>
+                    <Textarea
+                      id="quiz_success_message"
+                      value={localForm.settings?.quiz_success_message || ''}
+                      onChange={(e) => handleSettingsChange('quiz_success_message', e.target.value)}
+                      placeholder="Parabéns! Você foi aprovado no quiz."
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                    <div>
+                      <p className="font-medium">Captura de Lead Inicial</p>
+                      <p className="text-sm text-muted-foreground">
+                        Coletar dados do usuário antes de iniciar o quiz
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localForm.settings?.collect_lead_before_quiz || false}
+                      onCheckedChange={(v) => handleSettingsChange('collect_lead_before_quiz', v)}
+                    />
+                  </div>
+                </CardContent>
+              )}
             </Card>
 
             {/* Appearance Card */}

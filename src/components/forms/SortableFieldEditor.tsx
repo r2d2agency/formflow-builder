@@ -8,12 +8,14 @@ interface SortableFieldEditorProps {
   field: FormField;
   onUpdate: (updates: Partial<FormField>) => void;
   onRemove: () => void;
+  isQuizMode?: boolean;
 }
 
 const SortableFieldEditor: React.FC<SortableFieldEditorProps> = ({ 
   field, 
   onUpdate, 
-  onRemove 
+  onRemove,
+  isQuizMode 
 }) => {
   const {
     attributes,
@@ -46,6 +48,7 @@ const SortableFieldEditor: React.FC<SortableFieldEditorProps> = ({
         onUpdate={onUpdate}
         onRemove={onRemove}
         dragHandleProps={dragHandleProps}
+        isQuizMode={isQuizMode}
       />
     </div>
   );

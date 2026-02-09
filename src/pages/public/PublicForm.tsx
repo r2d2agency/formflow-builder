@@ -18,7 +18,7 @@ import { usePartialLead } from '@/hooks/usePartialLead';
 import apiService from '@/services/api';
 import { API_CONFIG } from '@/config/api';
 import { toast } from '@/hooks/use-toast';
-import { ArrowRight, ArrowLeft, Check, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Loader2, MessageCircle, Image as ImageIcon } from 'lucide-react';
 import type { Form, FormField } from '@/types';
 import { cn } from '@/lib/utils';
 import MaskedInput from '@/components/forms/MaskedInput';
@@ -103,6 +103,13 @@ const TypeformRenderer: React.FC<{
   const [currentValue, setCurrentValue] = useState<string | string[]>('');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Quiz & Lead Capture State
+  const [isLeadCapturePhase, setIsLeadCapturePhase] = useState(
+    !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
+  );
+  const [quizScore, setQuizScore] = useState(0);
+
   const customStyles = useCustomStyles(form);
 
   const fields = form.fields || [];
@@ -124,13 +131,78 @@ const TypeformRenderer: React.FC<{
       const newAnswers = { ...answers, [currentField.label]: currentValue };
       setAnswers(newAnswers);
       
+      // Quiz Logic: Calculate Score
+      if (form.settings?.is_quiz_mode) {
+        let isCorrect = false;
+
+        if (currentField.correct_answer) {
+             // Handle array vs string comparison
+             const userVal = Array.isArray(currentValue) ? [...currentValue].sort().join(',') : String(currentValue).trim();
+             const correctVal = Array.isArray(currentField.correct_answer) 
+                ? [...currentField.correct_answer].sort().join(',') 
+                : String(currentField.correct_answer).trim();
+             
+             // Simple case-insensitive check
+             if (userVal.toLowerCase() === correctVal.toLowerCase()) {
+                 isCorrect = true;
+                 setQuizScore(prev => prev + (currentField.points || 0));
+             }
+
+             // Show Feedback Toast
+             if (isCorrect && currentField.feedback_correct) {
+                 toast({
+                   title: "Resposta Correta!",
+                   description: currentField.feedback_correct,
+                   className: "bg-green-100 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300",
+                   duration: 3000,
+                 });
+             } else if (!isCorrect && currentField.feedback_incorrect) {
+                 toast({
+                   title: "Resposta Incorreta",
+                   description: currentField.feedback_incorrect,
+                   variant: "destructive",
+                   duration: 3000,
+                 });
+             }
+        }
+      }
+      
       // Save partial data when moving to next field
       if (onFieldComplete && currentValue.toString().trim()) {
         onFieldComplete(currentField.label, currentValue);
       }
       
       if (isLastField) {
-        onSubmit(newAnswers);
+        if (form.settings?.is_quiz_mode) {
+           // Recalculate full score from answers to ensure accuracy
+           let totalScore = 0;
+           let totalPoints = 0;
+           
+           fields.forEach(f => {
+              totalPoints += (f.points || 0);
+              const answer = newAnswers[f.label];
+              if (f.correct_answer && answer) {
+                 const userVal = Array.isArray(answer) ? [...answer].sort().join(',') : String(answer).trim();
+                 const correctVal = Array.isArray(f.correct_answer) ? [...f.correct_answer].sort().join(',') : String(f.correct_answer).trim();
+                 if (userVal.toLowerCase() === correctVal.toLowerCase()) {
+                    totalScore += (f.points || 0);
+                 }
+              }
+           });
+           
+           const percentage = totalPoints > 0 ? (totalScore / totalPoints) * 100 : 0;
+           const passed = percentage >= (form.settings?.quiz_passing_score || 0);
+
+           onSubmit({
+               ...newAnswers,
+               _quiz_score: totalScore,
+               _quiz_total: totalPoints,
+               _quiz_percentage: percentage,
+               _quiz_passed: passed
+           });
+        } else {
+           onSubmit(newAnswers);
+        }
       } else {
         setSlideDirection('left');
         setIsAnimating(true);
@@ -305,6 +377,55 @@ const TypeformRenderer: React.FC<{
             ))}
           </div>
         );
+      case 'image_select':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(currentField.options_with_images || []).map((option, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentValue(option.value)}
+                className={`
+                  relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all hover:bg-white/5
+                  ${currentValue === option.value 
+                    ? 'border-[var(--form-primary)] bg-[var(--form-primary)]/5' 
+                    : 'border-current/20 hover:border-current/40'}
+                `}
+                style={currentValue === option.value ? { borderColor: 'var(--form-primary)' } : {}}
+              >
+                {/* Image Part */}
+                <div className="aspect-video w-full overflow-hidden bg-black/20 relative">
+                  {option.image_url ? (
+                    <img 
+                      src={option.image_url} 
+                      alt={option.label}
+                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-current/20">
+                      <ImageIcon className="h-12 w-12" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Content Part */}
+                <div className="p-4 w-full">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-lg leading-tight">{option.label}</h3>
+                    {currentValue === option.value && (
+                      <div className="shrink-0 rounded-full bg-[var(--form-primary)] p-1 text-[var(--form-button-text)]">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+                  </div>
+                  {option.description && (
+                    <p className="mt-1 text-sm opacity-70 leading-snug">{option.description}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        );
+
       default:
         return (
           <Input
@@ -333,6 +454,73 @@ const TypeformRenderer: React.FC<{
       ? '-translate-x-full opacity-0' 
       : 'translate-x-full opacity-0';
   };
+
+  if (isLeadCapturePhase) {
+    return (
+      <div 
+        className={cn("flex flex-col items-center justify-center min-h-screen p-6")}
+        style={{ ...customStyles, backgroundColor: 'var(--form-bg)', color: 'var(--form-text)' }}
+      >
+        <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
+           {form.settings?.logo_url && (
+            <div className="flex justify-center mb-6">
+              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+            </div>
+           )}
+
+           <div className="text-center space-y-2">
+             <h1 className="text-2xl font-bold">Identificação</h1>
+             <p className="opacity-80">Preencha seus dados para iniciar.</p>
+           </div>
+           
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label>Nome Completo</Label>
+               <Input 
+                 value={answers['name'] || ''} 
+                 onChange={e => setAnswers({...answers, name: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="Seu nome"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>E-mail</Label>
+               <Input 
+                 type="email"
+                 value={answers['email'] || ''} 
+                 onChange={e => setAnswers({...answers, email: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="seu@email.com"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>Telefone / WhatsApp</Label>
+               <MaskedInput
+                 mask="phone"
+                 value={answers['phone'] || ''}
+                 onChange={val => setAnswers({...answers, phone: val})}
+                 className="bg-background/50"
+               />
+             </div>
+             
+             <Button 
+               className="w-full h-12 text-base mt-4"
+               onClick={() => {
+                 if(!answers['name'] || !answers['email']) {
+                   toast({ title: "Atenção", description: "Nome e E-mail são obrigatórios.", variant: "destructive" });
+                   return;
+                 }
+                 setIsLeadCapturePhase(false);
+               }}
+               style={{ backgroundColor: 'var(--form-primary)', color: 'var(--form-button-text)' }}
+             >
+               Começar <ArrowRight className="ml-2 h-4 w-4" />
+             </Button>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -468,6 +656,9 @@ const ChatRenderer: React.FC<{
   const [inputValue, setInputValue] = useState('');
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isComplete, setIsComplete] = useState(false);
+  const [isLeadCapturePhase, setIsLeadCapturePhase] = useState(
+    !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
+  );
   const customStyles = useCustomStyles(form);
 
   const fields = form.fields || [];
@@ -519,6 +710,73 @@ const ChatRenderer: React.FC<{
       handleSend();
     }
   };
+
+  if (isLeadCapturePhase) {
+    return (
+      <div 
+        className={cn("flex flex-col items-center justify-center min-h-screen p-6")}
+        style={{ ...customStyles, backgroundColor: 'var(--form-bg)', color: 'var(--form-text)' }}
+      >
+        <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
+           {form.settings?.logo_url && (
+            <div className="flex justify-center mb-6">
+              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+            </div>
+           )}
+
+           <div className="text-center space-y-2">
+             <h1 className="text-2xl font-bold">Identificação</h1>
+             <p className="opacity-80">Preencha seus dados para iniciar.</p>
+           </div>
+           
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label>Nome Completo</Label>
+               <Input 
+                 value={answers['name'] || ''} 
+                 onChange={e => setAnswers({...answers, name: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="Seu nome"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>E-mail</Label>
+               <Input 
+                 type="email"
+                 value={answers['email'] || ''} 
+                 onChange={e => setAnswers({...answers, email: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="seu@email.com"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>Telefone / WhatsApp</Label>
+               <MaskedInput
+                 mask="phone"
+                 value={answers['phone'] || ''}
+                 onChange={val => setAnswers({...answers, phone: val})}
+                 className="bg-background/50"
+               />
+             </div>
+             
+             <Button 
+               className="w-full h-12 text-base mt-4"
+               onClick={() => {
+                 if(!answers['name'] || !answers['email']) {
+                   toast({ title: "Atenção", description: "Nome e E-mail são obrigatórios.", variant: "destructive" });
+                   return;
+                 }
+                 setIsLeadCapturePhase(false);
+               }}
+               style={{ backgroundColor: 'var(--form-primary)', color: 'var(--form-button-text)' }}
+             >
+               Começar <ArrowRight className="ml-2 h-4 w-4" />
+             </Button>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -616,6 +874,9 @@ const LinkBioRenderer: React.FC<{
   onFieldComplete?: (fieldLabel: string, value: any) => void;
 }> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isLeadCapturePhase, setIsLeadCapturePhase] = useState(
+    !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
+  );
   const customStyles = useCustomStyles(form);
   
   const links = (form.fields || []).filter(f => f.type === 'link').sort((a, b) => a.order - b.order);
@@ -648,7 +909,35 @@ const LinkBioRenderer: React.FC<{
       }
     }
     
-    onSubmit(formData);
+    if (form.settings?.is_quiz_mode) {
+       let totalScore = 0;
+       let totalPoints = 0;
+       
+       fields.forEach(f => {
+          totalPoints += (f.points || 0);
+          const answer = formData[f.label];
+          if (f.correct_answer && answer) {
+             const userVal = Array.isArray(answer) ? [...answer].sort().join(',') : String(answer).trim();
+             const correctVal = Array.isArray(f.correct_answer) ? [...f.correct_answer].sort().join(',') : String(f.correct_answer).trim();
+             if (userVal.toLowerCase() === correctVal.toLowerCase()) {
+                totalScore += (f.points || 0);
+             }
+          }
+       });
+       
+       const percentage = totalPoints > 0 ? (totalScore / totalPoints) * 100 : 0;
+       const passed = percentage >= (form.settings?.quiz_passing_score || 0);
+
+       onSubmit({
+           ...formData,
+           _quiz_score: totalScore,
+           _quiz_total: totalPoints,
+           _quiz_percentage: percentage,
+           _quiz_passed: passed
+       });
+    } else {
+       onSubmit(formData);
+    }
   };
 
   const renderField = (field: FormField) => {
@@ -723,6 +1012,73 @@ const LinkBioRenderer: React.FC<{
         );
     }
   };
+
+  if (isLeadCapturePhase) {
+    return (
+      <div 
+        className={cn("flex flex-col items-center justify-center min-h-screen p-6")}
+        style={{ ...customStyles, backgroundColor: 'var(--form-bg)', color: 'var(--form-text)' }}
+      >
+        <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
+           {form.settings?.logo_url && (
+            <div className="flex justify-center mb-6">
+              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+            </div>
+           )}
+
+           <div className="text-center space-y-2">
+             <h1 className="text-2xl font-bold">Identificação</h1>
+             <p className="opacity-80">Preencha seus dados para iniciar.</p>
+           </div>
+           
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label>Nome Completo</Label>
+               <Input 
+                 value={formData['name'] || ''} 
+                 onChange={e => setFormData({...formData, name: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="Seu nome"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>E-mail</Label>
+               <Input 
+                 type="email"
+                 value={formData['email'] || ''} 
+                 onChange={e => setFormData({...formData, email: e.target.value})}
+                 className="bg-background/50"
+                 placeholder="seu@email.com"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>Telefone / WhatsApp</Label>
+               <MaskedInput
+                 mask="phone"
+                 value={formData['phone'] || ''}
+                 onChange={val => setFormData({...formData, phone: val})}
+                 className="bg-background/50"
+               />
+             </div>
+             
+             <Button 
+               className="w-full h-12 text-base mt-4"
+               onClick={() => {
+                 if(!formData['name'] || !formData['email']) {
+                   toast({ title: "Atenção", description: "Nome e E-mail são obrigatórios.", variant: "destructive" });
+                   return;
+                 }
+                 setIsLeadCapturePhase(false);
+               }}
+               style={{ backgroundColor: 'var(--form-primary)', color: 'var(--form-button-text)' }}
+             >
+               Começar <ArrowRight className="ml-2 h-4 w-4" />
+             </Button>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -851,6 +1207,10 @@ const StandardRenderer: React.FC<{
   onFieldComplete?: (fieldLabel: string, value: any) => void;
 }> = ({ form, onSubmit, isSubmitting, isEmbed, onFieldComplete }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
+  // Quiz & Lead Capture State
+  const [isLeadCapturePhase, setIsLeadCapturePhase] = useState(
+    !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
+  );
   const customStyles = useCustomStyles(form);
 
   const handleChange = (label: string, value: any) => {
@@ -1008,6 +1368,37 @@ const StandardRenderer: React.FC<{
             ))}
           </div>
         );
+      case 'image_select':
+        return (
+          <div className="grid grid-cols-2 gap-3" id={fieldId}>
+            {(field.options_with_images || []).map((option, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                   handleChange(field.label, option.value);
+                   handleBlur(field.label, option.value);
+                }}
+                className={cn(
+                  "relative flex flex-col overflow-hidden rounded-lg border text-left transition-all hover:bg-muted/50",
+                  value === option.value ? "ring-2 ring-primary border-primary" : "border-input"
+                )}
+              >
+                <div className="aspect-video w-full bg-muted flex items-center justify-center overflow-hidden">
+                   {option.image_url ? (
+                     <img src={option.image_url} alt={option.label} className="w-full h-full object-cover" />
+                   ) : (
+                     <ImageIcon className="h-8 w-8 opacity-20" />
+                   )}
+                </div>
+                <div className="p-2">
+                  <div className="font-medium text-sm">{option.label}</div>
+                  {option.description && <div className="text-xs text-muted-foreground mt-0.5">{option.description}</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+        );
       default:
         return (
           <Input
@@ -1027,6 +1418,73 @@ const StandardRenderer: React.FC<{
         );
     }
   };
+
+  if (isLeadCapturePhase) {
+    return (
+      <div 
+        className={cn("flex flex-col items-center justify-center min-h-screen p-6")}
+        style={{ ...customStyles, backgroundColor: 'var(--form-bg)', color: 'var(--form-text)' }}
+      >
+        <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
+           {form.settings?.logo_url && (
+            <div className="flex justify-center mb-6">
+              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+            </div>
+           )}
+
+           <div className="text-center space-y-2">
+             <h1 className="text-2xl font-bold">Identificação</h1>
+             <p className="opacity-80">Preencha seus dados para iniciar.</p>
+           </div>
+           
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label>Nome Completo</Label>
+               <Input 
+                 value={formData['name'] || ''} 
+                 onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                 className="bg-background/50"
+                 placeholder="Seu nome"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>E-mail</Label>
+               <Input 
+                 type="email"
+                 value={formData['email'] || ''} 
+                 onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                 className="bg-background/50"
+                 placeholder="seu@email.com"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label>Telefone / WhatsApp</Label>
+               <MaskedInput
+                 mask="phone"
+                 value={formData['phone'] || ''}
+                 onChange={val => setFormData(prev => ({ ...prev, phone: val }))}
+                 className="bg-background/50"
+               />
+             </div>
+             
+             <Button 
+               className="w-full h-12 text-base mt-4"
+               onClick={() => {
+                 if(!formData['name'] || !formData['email']) {
+                   toast({ title: "Atenção", description: "Nome e E-mail são obrigatórios.", variant: "destructive" });
+                   return;
+                 }
+                 setIsLeadCapturePhase(false);
+               }}
+               style={{ backgroundColor: 'var(--form-primary)', color: 'var(--form-button-text)' }}
+             >
+               Começar <ArrowRight className="ml-2 h-4 w-4" />
+             </Button>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -1107,13 +1565,20 @@ const SuccessScreen: React.FC<{
   downloadButtonText?: string;
   downloadButtonUrl?: string;
   primaryColor?: string;
+  quizResult?: {
+    score: number;
+    total: number;
+    passed: boolean;
+    percentage: number;
+  };
 }> = ({ 
   message, 
   logoUrl, 
   isEmbed,
   downloadButtonText,
   downloadButtonUrl,
-  primaryColor
+  primaryColor,
+  quizResult
 }) => (
   <div className={cn(
     "flex items-center justify-center bg-gradient-to-br from-background to-muted p-4",
@@ -1127,12 +1592,37 @@ const SuccessScreen: React.FC<{
           className="mx-auto max-h-16 object-contain mb-4"
         />
       )}
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-        <Check className="h-8 w-8 text-primary" />
-      </div>
+      
+      {quizResult ? (
+        <div className="space-y-4 animate-in zoom-in duration-500">
+           <div className={cn(
+             "mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4",
+             quizResult.passed ? "border-green-100 bg-green-50" : "border-red-100 bg-red-50"
+           )}>
+             {quizResult.passed ? (
+               <Check className="h-12 w-12 text-green-600" />
+             ) : (
+               <span className="text-4xl font-bold text-red-500">!</span>
+             )}
+           </div>
+           
+           <div>
+             <h1 className={cn("text-3xl font-bold", quizResult.passed ? "text-green-600" : "text-red-600")}>
+               {quizResult.passed ? 'Aprovado!' : 'Reprovado'}
+             </h1>
+             <div className="mt-2 text-xl font-medium text-muted-foreground">
+               Você fez {quizResult.score} de {quizResult.total} pontos ({Math.round(quizResult.percentage)}%)
+             </div>
+           </div>
+        </div>
+      ) : (
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <Check className="h-8 w-8 text-primary" />
+        </div>
+      )}
       
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">Obrigado!</h1>
+        {!quizResult && <h1 className="text-2xl font-bold">Obrigado!</h1>}
         <p className="text-muted-foreground max-w-md mx-auto">
           {message || 'Seu cadastro foi realizado com sucesso.'}
         </p>
@@ -1162,6 +1652,12 @@ const PublicForm: React.FC = () => {
   const { data: form, isLoading, error } = useFormBySlug(slug || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [quizResult, setQuizResult] = useState<{
+    score: number;
+    total: number;
+    passed: boolean;
+    percentage: number;
+  } | undefined>(undefined);
   
   // Partial lead saving
   const { savePartialData, getPartialLeadId } = usePartialLead(slug || '');
@@ -1272,6 +1768,16 @@ const PublicForm: React.FC = () => {
   const handleSubmit = async (data: Record<string, any>) => {
     setIsSubmitting(true);
     
+    // Extract quiz data if present
+    if (data._quiz_score !== undefined) {
+      setQuizResult({
+        score: data._quiz_score,
+        total: data._quiz_total,
+        passed: data._quiz_passed,
+        percentage: data._quiz_percentage
+      });
+    }
+    
     try {
       // Prepare tracking data (Facebook CAPI)
       const tracking = {
@@ -1378,6 +1884,7 @@ const PublicForm: React.FC = () => {
         downloadButtonText={displayForm.settings?.download_button_text}
         downloadButtonUrl={displayForm.settings?.download_button_url}
         primaryColor={displayForm.settings?.primary_color}
+        quizResult={quizResult}
       />
     );
   }

@@ -39,15 +39,28 @@ export interface ChangePasswordPayload {
 // Form Types
 export type FormType = 'typeform' | 'chat' | 'standard' | 'link_bio';
 
+export interface OptionWithImage {
+  value: string;
+  label: string;
+  image_url?: string;
+  description?: string;
+}
+
 export interface FormField {
   id: string;
-  type: 'text' | 'email' | 'phone' | 'whatsapp' | 'select' | 'radio' | 'checkbox' | 'textarea' | 'number' | 'date' | 'file' | 'link';
+  type: 'text' | 'email' | 'phone' | 'whatsapp' | 'select' | 'radio' | 'checkbox' | 'textarea' | 'number' | 'date' | 'file' | 'link' | 'image_select';
   label: string;
   placeholder?: string;
   required: boolean;
   validation?: FieldValidation;
   options?: string[]; // For select, radio, checkbox
+  options_with_images?: OptionWithImage[]; // For image_select
   order: number;
+  // Quiz specific fields
+  correct_answer?: string | string[];
+  points?: number;
+  feedback_correct?: string;
+  feedback_incorrect?: string;
 }
 
 export interface FieldValidation {
@@ -113,6 +126,13 @@ export interface FormSettings {
   // Download Button
   download_button_text?: string;
   download_button_url?: string;
+  // Quiz Settings
+  is_quiz_mode?: boolean;
+  max_attempts_per_user?: number;
+  collect_lead_before_quiz?: boolean;
+  lead_fields?: ('name' | 'email' | 'phone' | 'whatsapp')[];
+  quiz_success_message?: string; // Message based on score?
+  quiz_passing_score?: number; // % or absolute
 }
 
 export interface Form {

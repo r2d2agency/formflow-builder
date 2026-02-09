@@ -679,6 +679,29 @@ router.post('/forms/:slug/submit', async (req, res) => {
     const userAgent = req.headers['user-agent'];
     const source = req.query.source || 'organic';
 
+    // Check max attempts (Quiz Mode)
+    if (form.settings?.is_quiz_mode && form.settings?.max_attempts_per_user) {
+       const maxAttempts = parseInt(form.settings.max_attempts_per_user);
+       const email = data.email || findField(data, ['email', 'e-mail', 'mail']);
+       
+       if (email) {
+          const attemptsResult = await pool.query(
+            `SELECT COUNT(*) FROM leads 
+             WHERE form_id = $1 
+             AND is_partial = false
+             AND (data->>'email' = $2 OR data->>'e-mail' = $2 OR data->>'Email' = $2)`, 
+            [form.id, String(email)]
+          );
+          
+          if (parseInt(attemptsResult.rows[0].count) >= maxAttempts) {
+             return res.status(403).json({ 
+               success: false, 
+               error: 'Você atingiu o limite máximo de tentativas para este quiz.' 
+             });
+          }
+       }
+    }
+
     // Check if we have a partial lead to complete
     const partialLeadId = req.body.partial_lead_id;
     let lead;
