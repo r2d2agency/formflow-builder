@@ -1125,13 +1125,22 @@ const LinkBioRenderer: React.FC<{
                 className="block w-full"
               >
                 <div 
-                  className="w-full p-4 rounded-xl text-center font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md"
+                  className="w-full p-4 rounded-xl flex items-center justify-center relative font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md min-h-[64px]"
                   style={{ 
                     backgroundColor: 'var(--form-primary)',
                     color: 'var(--form-button-text)'
                   }}
                 >
-                  {link.label}
+                  {link.image_url && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg overflow-hidden bg-black/10 flex-shrink-0 border border-white/20">
+                      <img 
+                        src={link.image_url} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <span className={link.image_url ? "px-8" : ""}>{link.label}</span>
                 </div>
               </a>
             ))}

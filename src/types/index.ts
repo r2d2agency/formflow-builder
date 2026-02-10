@@ -55,6 +55,7 @@ export interface FormField {
   validation?: FieldValidation;
   options?: string[]; // For select, radio, checkbox
   options_with_images?: OptionWithImage[]; // For image_select
+  image_url?: string; // For link fields (e.g. link_bio)
   order: number;
   // Quiz specific fields
   correct_answer?: string | string[];

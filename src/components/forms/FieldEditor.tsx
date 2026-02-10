@@ -198,6 +198,17 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dr
               />
             </div>
           )}
+
+          {field.type === 'link' && (
+            <div className="space-y-2">
+              <Label>Imagem / Ícone (Opcional)</Label>
+              <ImageUploadInput
+                value={field.image_url || ''}
+                onChange={(url) => onUpdate({ image_url: url })}
+                placeholder="URL da imagem ou Upload"
+              />
+            </div>
+          )}
           
           <div className="flex items-center gap-4 pt-8">
             {field.type !== 'link' && (
