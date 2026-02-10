@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GripVertical, Trash2, Plus, X, Check } from 'lucide-react';
+import { GripVertical, Trash2, Plus, X, Check, Upload } from 'lucide-react';
+import ImageUploadInput from './ImageUploadInput';
 import type { FormField } from '@/types';
 
 const fieldTypes = [
@@ -317,10 +318,10 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ field, onUpdate, onRemove, dr
                       </Button>
                    </div>
                    <div className="pl-8 grid gap-2">
-                      <Input
+                      <ImageUploadInput
                         value={option.image_url || ''}
-                        onChange={(e) => handleUpdateImageOption(index, { image_url: e.target.value })}
-                        placeholder="URL da Imagem (https://...)"
+                        onChange={(url) => handleUpdateImageOption(index, { image_url: url })}
+                        placeholder="URL da Imagem ou Upload"
                         className="text-xs"
                       />
                       <Input
