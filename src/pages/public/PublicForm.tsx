@@ -913,7 +913,7 @@ const LinkBioRenderer: React.FC<{
        let totalScore = 0;
        let totalPoints = 0;
        
-       fields.forEach(f => {
+       inputs.forEach(f => {
           totalPoints += (f.points || 0);
           const answer = formData[f.label];
           if (f.correct_answer && answer) {
