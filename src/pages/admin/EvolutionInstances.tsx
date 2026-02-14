@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Plus,
   Pencil,
@@ -12,6 +12,13 @@ import {
   QrCode,
   Wifi,
   LogOut,
+  Send,
+  Paperclip,
+  FileText,
+  Image as ImageIcon,
+  Video,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,11 +87,15 @@ import {
   useTestEvolutionInstance,
   useConnectEvolutionInstance,
   useDisconnectEvolutionInstance,
+  useSendTestMessage,
 } from '@/hooks/useEvolutionInstances';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import type { EvolutionInstance } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUsers } from '@/hooks/useUsers';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -108,6 +119,14 @@ const EvolutionInstances: React.FC = () => {
   const [qrCodeData, setQrCodeData] = useState<{ base64?: string; pairingCode?: string } | null>(null);
   const [connectingInstance, setConnectingInstance] = useState<string | null>(null);
 
+  // Send Test State
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
+  const [testInstanceId, setTestInstanceId] = useState<string | null>(null);
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('');
+  const [testAttachment, setTestAttachment] = useState<{ url: string; type: string; filename: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -119,6 +138,8 @@ const EvolutionInstances: React.FC = () => {
   const testInstance = useTestEvolutionInstance();
   const connectInstance = useConnectEvolutionInstance();
   const disconnectInstance = useDisconnectEvolutionInstance();
+  const sendTestMessage = useSendTestMessage();
+  const { uploadFile, isUploading: isUploadingFile } = useFileUpload();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -228,6 +249,70 @@ const EvolutionInstances: React.FC = () => {
     }
   };
 
+  const handleOpenTestDialog = (instanceId: string) => {
+    setTestInstanceId(instanceId);
+    setTestPhone('');
+    setTestMessage('Mensagem de teste 🚀');
+    setTestAttachment(null);
+    setIsTestDialogOpen(true);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Determine upload type based on mime
+    let uploadType: 'images' | 'audio' | 'video' | 'documents' = 'documents';
+    let mediaType = 'document';
+    if (file.type.startsWith('image/')) { uploadType = 'images'; mediaType = 'image'; }
+    else if (file.type.startsWith('video/')) { uploadType = 'video'; mediaType = 'video'; }
+    else if (file.type.startsWith('audio/')) { uploadType = 'audio'; mediaType = 'audio'; }
+
+    const result = await uploadFile(file, uploadType);
+    if (result) {
+      setTestAttachment({ url: result.url, type: mediaType, filename: result.original_filename || result.filename });
+    }
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSendTest = async () => {
+    if (!testInstanceId || !testPhone.trim()) {
+      toast({ title: 'Atenção', description: 'Informe o número de telefone.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Send text message if there's a message
+      if (testMessage.trim()) {
+        await sendTestMessage.mutateAsync({
+          id: testInstanceId,
+          phone: testPhone,
+          message: testMessage,
+          type: 'text',
+        });
+      }
+
+      // Send attachment if there is one
+      if (testAttachment) {
+        await sendTestMessage.mutateAsync({
+          id: testInstanceId,
+          phone: testPhone,
+          message: '',
+          type: testAttachment.type,
+          media_url: testAttachment.url,
+          filename: testAttachment.filename,
+        });
+      }
+
+      if (!testMessage.trim() && !testAttachment) {
+        toast({ title: 'Atenção', description: 'Escreva uma mensagem ou anexe um arquivo.', variant: 'destructive' });
+      }
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -325,6 +410,10 @@ const EvolutionInstances: React.FC = () => {
                         <QrCode className="mr-2 h-4 w-4" />
                         Ler QR Code
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenTestDialog(instance.id)}>
+                        <Send className="mr-2 h-4 w-4" />
+                        Enviar Teste
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDisconnect(instance.id)}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Desconectar
@@ -380,7 +469,7 @@ const EvolutionInstances: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                      <Button 
                        variant="outline" 
                        className="flex-1"
@@ -389,7 +478,7 @@ const EvolutionInstances: React.FC = () => {
                        disabled={testInstance.isPending}
                      >
                        <Wifi className="mr-2 h-3 w-3" />
-                       Testar
+                       Conexão
                      </Button>
                      <Button 
                        variant="default" 
@@ -400,6 +489,15 @@ const EvolutionInstances: React.FC = () => {
                      >
                        <QrCode className="mr-2 h-3 w-3" />
                        QR Code
+                     </Button>
+                     <Button 
+                       variant="secondary" 
+                       className="w-full"
+                       size="sm"
+                       onClick={() => handleOpenTestDialog(instance.id)}
+                     >
+                       <Send className="mr-2 h-3 w-3" />
+                       Enviar Teste
                      </Button>
                   </div>
                 </CardContent>
@@ -589,6 +687,124 @@ const EvolutionInstances: React.FC = () => {
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setIsQrDialogOpen(false)}>
                 Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Send Test Dialog */}
+        <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Enviar Mensagem de Teste
+              </DialogTitle>
+              <DialogDescription>
+                Envie uma mensagem de texto e/ou um arquivo para testar a instância.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Phone */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Número de destino</label>
+                <Input
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  placeholder="5511999999999"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Formato: código do país + DDD + número (sem espaços ou traços)
+                </p>
+              </div>
+
+              {/* Message */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mensagem (opcional)</label>
+                <Textarea
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  placeholder="Digite sua mensagem de teste..."
+                  rows={3}
+                />
+              </div>
+
+              {/* Attachment */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Anexo (opcional)</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleFileSelect}
+                />
+                
+                {testAttachment ? (
+                  <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      {testAttachment.type === 'image' && <ImageIcon className="h-5 w-5 text-primary" />}
+                      {testAttachment.type === 'video' && <Video className="h-5 w-5 text-primary" />}
+                      {testAttachment.type === 'audio' && <MessageSquare className="h-5 w-5 text-primary" />}
+                      {testAttachment.type === 'document' && <FileText className="h-5 w-5 text-primary" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{testAttachment.filename}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{testAttachment.type}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => setTestAttachment(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingFile}
+                  >
+                    {isUploadingFile ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enviando arquivo...
+                      </>
+                    ) : (
+                      <>
+                        <Paperclip className="mr-2 h-4 w-4" />
+                        Anexar Arquivo
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsTestDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSendTest}
+                disabled={sendTestMessage.isPending || !testPhone.trim() || (!testMessage.trim() && !testAttachment)}
+              >
+                {sendTestMessage.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Enviar Teste
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
