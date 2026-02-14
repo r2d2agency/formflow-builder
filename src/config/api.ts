@@ -50,6 +50,7 @@ export const API_CONFIG = {
     
     // Public form submission
     SUBMIT_FORM: (slug: string) => `/public/forms/${slug}/submit`,
+    CHECK_WHATSAPP: '/public/check-whatsapp',
     
     // Short Links
     LINKS: '/links',

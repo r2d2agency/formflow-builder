@@ -759,6 +759,86 @@ router.post('/forms/:slug/submit', async (req, res) => {
   }
 });
 
+// POST /api/public/check-whatsapp
+// Checks if a phone number is registered on WhatsApp via Evolution API
+router.post('/check-whatsapp', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { phone, form_slug } = req.body;
+
+    if (!phone || !form_slug) {
+      return res.status(400).json({ success: false, error: 'phone e form_slug são obrigatórios' });
+    }
+
+    // Clean number - only digits
+    const cleanPhone = String(phone).replace(/\D/g, '');
+
+    // Validate format: must be 55 + DDD(2 digits, not starting with 0) + 9 digits = 13 digits
+    if (cleanPhone.length < 12 || cleanPhone.length > 13) {
+      return res.json({ success: true, data: { exists: false, reason: 'invalid_format' } });
+    }
+
+    // Get form to find evolution instance
+    const formResult = await pool.query(
+      'SELECT settings FROM forms WHERE slug = $1 AND is_active = true',
+      [form_slug]
+    );
+
+    if (formResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Formulário não encontrado' });
+    }
+
+    const settings = formResult.rows[0].settings || {};
+    const instanceId = settings.evolution_instance_id;
+
+    if (!instanceId) {
+      // No evolution instance configured, skip check
+      return res.json({ success: true, data: { exists: null, reason: 'no_instance' } });
+    }
+
+    // Get evolution instance
+    const instanceResult = await pool.query(
+      'SELECT * FROM evolution_instances WHERE id = $1 AND is_active = true',
+      [instanceId]
+    );
+
+    if (instanceResult.rows.length === 0) {
+      return res.json({ success: true, data: { exists: null, reason: 'instance_inactive' } });
+    }
+
+    const instance = instanceResult.rows[0];
+    const baseUrl = normalizeUrl(instance.api_url);
+    const instanceName = instance.name.trim();
+
+    // Call Evolution API: POST /chat/whatsappNumbers/{instance}
+    const checkResponse = await fetch(`${baseUrl}/chat/whatsappNumbers/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': instance.api_key.trim(),
+      },
+      body: JSON.stringify({ numbers: [cleanPhone] }),
+    });
+
+    if (!checkResponse.ok) {
+      console.warn('[WhatsApp Check] Evolution API error:', checkResponse.status);
+      return res.json({ success: true, data: { exists: null, reason: 'api_error' } });
+    }
+
+    const checkData = await checkResponse.json();
+    console.log('[WhatsApp Check] Response:', JSON.stringify(checkData));
+
+    // Evolution API returns array of results: [{ exists: true/false, jid: "...", number: "..." }]
+    const result = Array.isArray(checkData) ? checkData[0] : checkData;
+    const exists = result?.exists === true;
+
+    return res.json({ success: true, data: { exists, jid: result?.jid || null } });
+  } catch (error) {
+    console.error('[WhatsApp Check] Error:', error.message);
+    return res.json({ success: true, data: { exists: null, reason: 'error' } });
+  }
+});
+
 // GET /api/public/forms/:slug (for loading form on public page)
 router.get('/forms/:slug', async (req, res) => {
   try {
