@@ -23,6 +23,8 @@ import type { Form, FormField } from '@/types';
 import { cn } from '@/lib/utils';
 import MaskedInput from '@/components/forms/MaskedInput';
 import WhatsAppFloatButton from '@/components/forms/WhatsAppFloatButton';
+import WhatsAppCheckStatus from '@/components/forms/WhatsAppCheckStatus';
+import { useWhatsAppCheck } from '@/hooks/useWhatsAppCheck';
 
 // Helper to get cookie value
 const getCookie = (name: string): string | null => {
@@ -79,11 +81,36 @@ const validateField = (field: FormField, value: any): string | null => {
     }
   }
 
-  if (field.type === 'phone' || field.type === 'whatsapp') {
-     // Remove non-digits
+  if (field.type === 'phone') {
      const digits = String(value).replace(/\D/g, '');
      if (digits.length < 10) {
        return `O campo "${field.label}" deve conter um número de telefone válido (DDD + número).`;
+     }
+  }
+
+  if (field.type === 'whatsapp') {
+     const digits = String(value).replace(/\D/g, '');
+     // Expected format: 55 + DDD(2 digits) + number(8-9 digits) = 12 or 13 digits
+     if (digits.length < 12 || digits.length > 13) {
+       return `O campo "${field.label}" deve conter um número de WhatsApp válido com DDD.`;
+     }
+     // Check country code
+     if (!digits.startsWith('55')) {
+       return `O campo "${field.label}" deve começar com o código do Brasil (55).`;
+     }
+     // DDD validation: 2 digits after 55, cannot start with 0
+     const ddd = digits.substring(2, 4);
+     if (ddd.startsWith('0')) {
+       return `O DDD não deve começar com zero. Use apenas os 2 dígitos (ex: 11, 21, 31).`;
+     }
+     const dddNum = parseInt(ddd, 10);
+     if (dddNum < 11 || dddNum > 99) {
+       return `DDD inválido. Informe um DDD válido (ex: 11, 21, 31).`;
+     }
+     // Mobile numbers in Brazil should start with 9 after DDD
+     const numberPart = digits.substring(4);
+     if (numberPart.length === 9 && !numberPart.startsWith('9')) {
+       return `Número de celular inválido. Números de 9 dígitos devem começar com 9.`;
      }
   }
   
@@ -111,12 +138,13 @@ const TypeformRenderer: React.FC<{
   const [quizScore, setQuizScore] = useState(0);
 
   const customStyles = useCustomStyles(form);
+  const { checkWhatsApp, isChecking: isCheckingWA, checkResult: waCheckResult, resetCheck: resetWACheck } = useWhatsAppCheck(form.slug);
 
   const fields = form.fields || [];
   const currentField = fields[currentIndex];
   const isLastField = currentIndex === fields.length - 1;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentField) {
       const error = validateField(currentField, currentValue);
       if (error) {
@@ -126,6 +154,19 @@ const TypeformRenderer: React.FC<{
           variant: 'destructive',
         });
         return;
+      }
+
+      // WhatsApp verification before proceeding
+      if (currentField.type === 'whatsapp' && typeof currentValue === 'string' && currentValue.replace(/\D/g, '').length >= 12) {
+        const result = await checkWhatsApp(currentValue);
+        if (result && result.exists === false) {
+          toast({
+            title: 'Número inválido',
+            description: 'Este número não possui WhatsApp. Por favor, informe um número válido.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
       
       const newAnswers = { ...answers, [currentField.label]: currentValue };
@@ -262,15 +303,24 @@ const TypeformRenderer: React.FC<{
         );
       case 'whatsapp':
         return (
-          <MaskedInput
-            mask="whatsapp"
-            value={typeof currentValue === 'string' ? currentValue : ''}
-            onChange={(val) => setCurrentValue(val)}
-            onKeyDown={handleKeyDown}
-            className={baseInputClass}
-            style={inputStyle}
-            autoFocus
-          />
+          <div>
+            <MaskedInput
+              mask="whatsapp"
+              value={typeof currentValue === 'string' ? currentValue : ''}
+              onChange={(val) => { setCurrentValue(val); resetWACheck(); }}
+              onBlur={() => {
+                const val = typeof currentValue === 'string' ? currentValue : '';
+                if (val.replace(/\D/g, '').length >= 12) {
+                  checkWhatsApp(val);
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              className={baseInputClass}
+              style={inputStyle}
+              autoFocus
+            />
+            <WhatsAppCheckStatus isChecking={isCheckingWA} checkResult={waCheckResult} />
+          </div>
         );
       case 'phone':
         return (
@@ -878,6 +928,7 @@ const LinkBioRenderer: React.FC<{
     !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
   );
   const customStyles = useCustomStyles(form);
+  const { checkWhatsApp, isChecking: isCheckingWA, checkResult: waCheckResult, resetCheck: resetWACheck } = useWhatsAppCheck(form.slug);
   
   const links = (form.fields || []).filter(f => f.type === 'link').sort((a, b) => a.order - b.order);
   const inputs = (form.fields || []).filter(f => f.type !== 'link').sort((a, b) => a.order - b.order);
@@ -892,7 +943,7 @@ const LinkBioRenderer: React.FC<{
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     for (const field of inputs) {
@@ -906,6 +957,22 @@ const LinkBioRenderer: React.FC<{
           variant: 'destructive',
         });
         return;
+      }
+
+      // Check WhatsApp before submit
+      if (field.type === 'whatsapp' && value) {
+        const digits = String(value).replace(/\D/g, '');
+        if (digits.length >= 12) {
+          const result = await checkWhatsApp(value);
+          if (result && result.exists === false) {
+            toast({
+              title: 'Número inválido',
+              description: `O número informado em "${field.label}" não possui WhatsApp.`,
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
       }
     }
     
@@ -964,6 +1031,24 @@ const LinkBioRenderer: React.FC<{
           />
         );
       case 'whatsapp':
+        return (
+          <div>
+            <MaskedInput
+              id={fieldId}
+              mask="whatsapp"
+              value={value}
+              onChange={(val) => { handleChange(field.label, val); resetWACheck(); }}
+              onBlur={() => {
+                handleBlur(field.label, value);
+                const digits = String(value).replace(/\D/g, '');
+                if (digits.length >= 12) checkWhatsApp(value);
+              }}
+              disabled={isSubmitting}
+              className="bg-background/50 border-input/50 focus:bg-background transition-colors"
+            />
+            <WhatsAppCheckStatus isChecking={isCheckingWA} checkResult={waCheckResult} />
+          </div>
+        );
       case 'phone':
       case 'email':
         return (
@@ -1221,6 +1306,7 @@ const StandardRenderer: React.FC<{
     !!(form.settings?.is_quiz_mode && form.settings?.collect_lead_before_quiz)
   );
   const customStyles = useCustomStyles(form);
+  const { checkWhatsApp, isChecking: isCheckingWA, checkResult: waCheckResult, resetCheck: resetWACheck } = useWhatsAppCheck(form.slug);
 
   const handleChange = (label: string, value: any) => {
     setFormData((prev) => ({ ...prev, [label]: value }));
@@ -1233,7 +1319,7 @@ const StandardRenderer: React.FC<{
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const fields = form.fields || [];
@@ -1254,6 +1340,27 @@ const StandardRenderer: React.FC<{
           element.focus();
         }
         return;
+      }
+
+      // Check WhatsApp before submit
+      if (field.type === 'whatsapp' && value) {
+        const digits = String(value).replace(/\D/g, '');
+        if (digits.length >= 12) {
+          const result = await checkWhatsApp(value);
+          if (result && result.exists === false) {
+            toast({
+              title: 'Número inválido',
+              description: `O número informado em "${field.label}" não possui WhatsApp.`,
+              variant: 'destructive',
+            });
+            const element = document.getElementById(`field-${field.id}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              element.focus();
+            }
+            return;
+          }
+        }
       }
     }
     
@@ -1280,14 +1387,21 @@ const StandardRenderer: React.FC<{
         );
       case 'whatsapp':
         return (
-          <MaskedInput
-            id={fieldId}
-            mask="whatsapp"
-            value={value}
-            onChange={(val) => handleChange(field.label, val)}
-            onBlur={() => handleBlur(field.label, value)}
-            disabled={isSubmitting}
-          />
+          <div>
+            <MaskedInput
+              id={fieldId}
+              mask="whatsapp"
+              value={value}
+              onChange={(val) => { handleChange(field.label, val); resetWACheck(); }}
+              onBlur={() => {
+                handleBlur(field.label, value);
+                const digits = String(value).replace(/\D/g, '');
+                if (digits.length >= 12) checkWhatsApp(value);
+              }}
+              disabled={isSubmitting}
+            />
+            <WhatsAppCheckStatus isChecking={isCheckingWA} checkResult={waCheckResult} />
+          </div>
         );
       case 'phone':
         return (
