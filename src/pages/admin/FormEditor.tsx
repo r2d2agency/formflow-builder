@@ -53,6 +53,7 @@ import type { Form, FormField, FormSettings } from '@/types';
 import LogoUploader from '@/components/forms/LogoUploader';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
 import SortableFieldEditor from '@/components/forms/SortableFieldEditor';
+import { Slider } from '@/components/ui/slider';
 
 const FormEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -509,6 +510,21 @@ const FormEditor: React.FC = () => {
                   onChange={(url) => handleSettingsChange('logo_url', url)}
                 />
 
+                {/* Logo Size */}
+                {localForm.settings?.logo_url && (
+                  <div className="space-y-2">
+                    <Label>Tamanho da Logo: {localForm.settings?.logo_size || 48}px</Label>
+                    <Slider
+                      value={[localForm.settings?.logo_size || 48]}
+                      onValueChange={([val]) => handleSettingsChange('logo_size', val)}
+                      min={16}
+                      max={200}
+                      step={4}
+                    />
+                    <p className="text-xs text-muted-foreground">Ajuste a altura da logo no formulário (16px - 200px)</p>
+                  </div>
+                )}
+
                 {/* Colors */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -633,7 +649,8 @@ const FormEditor: React.FC = () => {
                     <img 
                       src={localForm.settings.logo_url} 
                       alt="Logo" 
-                      className="h-10 w-auto mb-4 object-contain"
+                      className="w-auto mb-4 object-contain"
+                      style={{ height: `${localForm.settings?.logo_size || 48}px` }}
                     />
                   )}
                   <p className="mb-2 text-sm font-medium" style={{ color: localForm.settings?.text_color || '#1e293b' }}>

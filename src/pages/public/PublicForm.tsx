@@ -514,7 +514,7 @@ const TypeformRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -605,7 +605,8 @@ const TypeformRenderer: React.FC<{
             <img 
               src={form.settings.logo_url} 
               alt="Logo" 
-              className="max-h-12 object-contain"
+              className="object-contain"
+              style={{ height: `${form.settings?.logo_size || 48}px` }}
             />
           )}
 
@@ -770,7 +771,7 @@ const ChatRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -839,7 +840,8 @@ const ChatRenderer: React.FC<{
           <img 
             src={form.settings.logo_url} 
             alt="Logo" 
-            className="mx-auto max-h-12 object-contain mb-2"
+            className="mx-auto object-contain mb-2"
+            style={{ height: `${form.settings?.logo_size || 48}px` }}
           />
         )}
         <h1 className="text-lg font-semibold">{form.name}</h1>
@@ -1107,7 +1109,7 @@ const LinkBioRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -1181,7 +1183,10 @@ const LinkBioRenderer: React.FC<{
         {/* Profile / Header */}
         <div className="text-center space-y-4">
           {form.settings?.logo_url && (
-            <div className="mx-auto w-24 h-24 rounded-full overflow-hidden border-4 border-background shadow-xl">
+            <div 
+              className="mx-auto rounded-full overflow-hidden border-4 border-background shadow-xl"
+              style={{ width: `${form.settings?.logo_size || 96}px`, height: `${form.settings?.logo_size || 96}px` }}
+            >
               <img 
                 src={form.settings.logo_url} 
                 alt="Logo" 
@@ -1551,7 +1556,7 @@ const StandardRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="max-h-16 object-contain" />
+              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -1619,12 +1624,13 @@ const StandardRenderer: React.FC<{
     >
       <div className="w-full max-w-lg rounded-xl border bg-card p-8 shadow-lg text-center">
         {/* Logo */}
-        {form.settings?.logo_url && (
+         {form.settings?.logo_url && (
           <div className="flex justify-center mb-6">
             <img 
               src={form.settings.logo_url} 
               alt="Logo" 
-              className="max-h-20 object-contain"
+              className="object-contain"
+              style={{ height: `${form.settings?.logo_size || 48}px` }}
             />
           </div>
         )}
@@ -1684,6 +1690,7 @@ const StandardRenderer: React.FC<{
 const SuccessScreen: React.FC<{ 
   message?: string; 
   logoUrl?: string; 
+  logoSize?: number;
   isEmbed?: boolean;
   downloadButtonText?: string;
   downloadButtonUrl?: string;
@@ -1697,6 +1704,7 @@ const SuccessScreen: React.FC<{
 }> = ({ 
   message, 
   logoUrl, 
+  logoSize,
   isEmbed,
   downloadButtonText,
   downloadButtonUrl,
@@ -1712,7 +1720,8 @@ const SuccessScreen: React.FC<{
         <img 
           src={logoUrl} 
           alt="Logo" 
-          className="mx-auto max-h-16 object-contain mb-4"
+          className="mx-auto object-contain mb-4"
+          style={{ height: `${logoSize || 48}px` }}
         />
       )}
       
@@ -2003,6 +2012,7 @@ const PublicForm: React.FC = () => {
       <SuccessScreen 
         message={displayForm.settings?.success_message} 
         logoUrl={displayForm.settings?.logo_url}
+        logoSize={displayForm.settings?.logo_size}
         isEmbed={isEmbed}
         downloadButtonText={displayForm.settings?.download_button_text}
         downloadButtonUrl={displayForm.settings?.download_button_url}
