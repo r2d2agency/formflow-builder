@@ -116,6 +116,7 @@ export interface FormSettings {
   input_border_color?: string;
   placeholder_color?: string;
   logo_url?: string;
+  logo_size?: number; // Logo height in px (default 48)
   whatsapp_message?: WhatsAppMessage;
   // Floating WhatsApp button
   whatsapp_float_enabled?: boolean;
