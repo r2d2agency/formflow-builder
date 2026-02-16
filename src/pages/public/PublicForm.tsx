@@ -514,7 +514,7 @@ const TypeformRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
+               <img src={form.settings.logo_url} alt="Logo" className="object-contain w-auto max-w-full" style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -605,8 +605,8 @@ const TypeformRenderer: React.FC<{
             <img 
               src={form.settings.logo_url} 
               alt="Logo" 
-              className="object-contain"
-              style={{ height: `${form.settings?.logo_size || 48}px` }}
+              className="object-contain w-auto max-w-full"
+              style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }}
             />
           )}
 
@@ -771,7 +771,7 @@ const ChatRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
+               <img src={form.settings.logo_url} alt="Logo" className="object-contain w-auto max-w-full" style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -840,8 +840,8 @@ const ChatRenderer: React.FC<{
           <img 
             src={form.settings.logo_url} 
             alt="Logo" 
-            className="mx-auto object-contain mb-2"
-            style={{ height: `${form.settings?.logo_size || 48}px` }}
+            className="mx-auto object-contain w-auto max-w-full mb-2"
+            style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }}
           />
         )}
         <h1 className="text-lg font-semibold">{form.name}</h1>
@@ -1109,7 +1109,7 @@ const LinkBioRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
+               <img src={form.settings.logo_url} alt="Logo" className="object-contain w-auto max-w-full" style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -1556,7 +1556,7 @@ const StandardRenderer: React.FC<{
         <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl border shadow-lg animate-in fade-in zoom-in duration-500">
            {form.settings?.logo_url && (
             <div className="flex justify-center mb-6">
-              <img src={form.settings.logo_url} alt="Logo" className="object-contain" style={{ height: `${form.settings?.logo_size || 48}px` }} />
+              <img src={form.settings.logo_url} alt="Logo" className="object-contain w-auto max-w-full" style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }} />
             </div>
            )}
 
@@ -1629,8 +1629,8 @@ const StandardRenderer: React.FC<{
             <img 
               src={form.settings.logo_url} 
               alt="Logo" 
-              className="object-contain"
-              style={{ height: `${form.settings?.logo_size || 48}px` }}
+              className="object-contain w-auto max-w-full"
+              style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }}
             />
           </div>
         )}
@@ -1720,8 +1720,8 @@ const SuccessScreen: React.FC<{
         <img 
           src={logoUrl} 
           alt="Logo" 
-          className="mx-auto object-contain mb-4"
-          style={{ height: `${logoSize || 48}px` }}
+          className="mx-auto object-contain w-auto max-w-full mb-4"
+          style={{ height: `${logoSize || 48}px`, minHeight: `${logoSize || 48}px` }}
         />
       )}
       
