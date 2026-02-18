@@ -612,7 +612,7 @@ const TypeformRenderer: React.FC<{
 
           {/* Title and Description */}
           <div className="text-center space-y-2">
-            <h1 className="text-xl font-bold">{form.name}</h1>
+            {form.title && <h1 className="text-xl font-bold">{form.title}</h1>}
             {form.description && (
               <p className="text-sm opacity-80">{form.description}</p>
             )}
@@ -844,7 +844,7 @@ const ChatRenderer: React.FC<{
             style={{ height: `${form.settings?.logo_size || 48}px`, minHeight: `${form.settings?.logo_size || 48}px` }}
           />
         )}
-        <h1 className="text-lg font-semibold">{form.name}</h1>
+        {form.title && <h1 className="text-lg font-semibold">{form.title}</h1>}
         {form.description && (
           <p className="text-sm text-muted-foreground mt-1">{form.description}</p>
         )}
@@ -1196,7 +1196,7 @@ const LinkBioRenderer: React.FC<{
           )}
           
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight">{form.name}</h1>
+            {form.title && <h1 className="text-2xl font-bold tracking-tight">{form.title}</h1>}
             {form.description && (
               <p className="text-muted-foreground">{form.description}</p>
             )}
@@ -1635,9 +1635,11 @@ const StandardRenderer: React.FC<{
           </div>
         )}
 
-        <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--form-text)' }}>
-          {form.name}
-        </h1>
+        {form.title && (
+          <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--form-text)' }}>
+            {form.title}
+          </h1>
+        )}
         {form.description && (
           <p className="mb-6 text-muted-foreground">{form.description}</p>
         )}

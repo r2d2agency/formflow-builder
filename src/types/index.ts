@@ -140,6 +140,7 @@ export interface FormSettings {
 export interface Form {
   id: string;
   name: string;
+  title?: string;
   slug: string;
   description?: string;
   type: FormType;

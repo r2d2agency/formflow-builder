@@ -320,12 +320,13 @@ const FormEditor: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome do Formulário</Label>
+                    <Label htmlFor="name">Nome Interno</Label>
                     <Input
                       id="name"
                       value={localForm.name || ''}
                       onChange={(e) => handleChange('name', e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">Identificação interna, não visível no formulário público</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="slug">Slug (URL)</Label>
@@ -335,6 +336,16 @@ const FormEditor: React.FC = () => {
                       onChange={(e) => handleChange('slug', e.target.value)}
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título do Formulário</Label>
+                  <Input
+                    id="title"
+                    placeholder="Título exibido no formulário público"
+                    value={localForm.title || ''}
+                    onChange={(e) => handleChange('title', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Exibido para os usuários no formulário público. Deixe vazio para não exibir título.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
