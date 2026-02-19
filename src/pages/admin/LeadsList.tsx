@@ -28,12 +28,14 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLeads, useDeleteLead, useExportLeads, useBulkDeleteLeads } from '@/hooks/useLeads';
+import { useForms } from '@/hooks/useForms';
 import {
   Search,
   Download,
   Trash2,
   Eye,
   Calendar,
+  Filter,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -63,6 +65,9 @@ const LeadsList: React.FC = () => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [page] = useState(1);
   
+  const { data: formsData } = useForms(1, 100);
+  const forms = formsData?.data ?? [];
+
   const { data, isLoading, error } = useLeads(
     page, 
     50, 
@@ -140,12 +145,24 @@ const LeadsList: React.FC = () => {
     setBulkDeleteOpen(false);
   };
 
-  const handleExport = (format: 'csv' | 'excel' = 'excel') => {
+  const handleExport = (fmt: 'csv' | 'excel' = 'excel') => {
     exportLeads.mutate({ 
       formId: formFilter === 'all' ? undefined : formFilter,
-      format 
+      format: fmt,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      showPartial,
+      search: search || undefined,
     });
   };
+
+  const activeFiltersCount = [
+    formFilter !== 'all',
+    !!startDate,
+    !!endDate,
+    showPartial,
+    !!search,
+  ].filter(Boolean).length;
 
   return (
     <AdminLayout>
@@ -158,7 +175,7 @@ const LeadsList: React.FC = () => {
               Visualize e gerencie os leads capturados
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {selectedIds.length > 0 && (
               <Button onClick={() => setBulkDeleteOpen(true)} variant="destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -169,45 +186,63 @@ const LeadsList: React.FC = () => {
               <Download className="mr-2 h-4 w-4" />
               Exportar Excel
             </Button>
+            <Button onClick={() => handleExport('csv')} variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              CSV
+            </Button>
           </div>
         </div>
 
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar leads..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="space-y-4">
+              {/* Row 1: Search + Form */}
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar leads..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={formFilter} onValueChange={setFormFilter}>
+                  <SelectTrigger className="w-full sm:w-[250px]">
+                    <SelectValue placeholder="Filtrar por formulário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os formulários</SelectItem>
+                    {forms.map((form) => (
+                      <SelectItem key={form.id} value={form.id}>
+                        {form.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={formFilter} onValueChange={setFormFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Filtrar por formulário" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os formulários</SelectItem>
-                  <SelectItem value="1">Formulário de Contato</SelectItem>
-                  <SelectItem value="2">Quiz de Vendas</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full sm:w-[150px]"
-                />
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full sm:w-[150px]"
-                />
+
+              {/* Row 2: Dates + Status */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 flex-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full sm:w-[160px]"
+                    placeholder="Data início"
+                  />
+                  <span className="text-muted-foreground text-sm">até</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full sm:w-[160px]"
+                    placeholder="Data fim"
+                  />
+                </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox 
                     id="showPartial" 
@@ -221,6 +256,22 @@ const LeadsList: React.FC = () => {
                     Mostrar Incompletos
                   </label>
                 </div>
+                {activeFiltersCount > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setSearch('');
+                      setFormFilter('all');
+                      setStartDate('');
+                      setEndDate('');
+                      setShowPartial(true);
+                    }}
+                  >
+                    <Filter className="mr-1 h-3 w-3" />
+                    Limpar filtros ({activeFiltersCount})
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
