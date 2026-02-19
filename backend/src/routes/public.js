@@ -707,7 +707,7 @@ router.post('/forms/:slug/submit', async (req, res) => {
     let lead;
 
     if (partialLeadId) {
-      // Complete the partial lead
+      // Complete the partial lead (don't filter by is_partial to handle race conditions)
       const updateResult = await pool.query(
         `UPDATE leads 
          SET data = $1, is_partial = false, updated_at = NOW()
@@ -730,14 +730,36 @@ router.post('/forms/:slug/submit', async (req, res) => {
         lead = insertResult.rows[0];
       }
     } else {
-      // Create new complete lead
-      const leadResult = await pool.query(
-        `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
-         VALUES ($1, $2, $3, $4, $5, false)
-         RETURNING *`,
-        [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+      // No partial_lead_id provided - try to find a recent partial lead from same IP to complete
+      const recentPartial = await pool.query(
+        `SELECT id FROM leads 
+         WHERE form_id = $1 AND is_partial = true AND ip_address = $2
+         AND updated_at > NOW() - INTERVAL '2 hours'
+         ORDER BY updated_at DESC LIMIT 1`,
+        [form.id, ipAddress]
       );
-      lead = leadResult.rows[0];
+
+      if (recentPartial.rows.length > 0) {
+        // Complete the found partial lead
+        const updateResult = await pool.query(
+          `UPDATE leads 
+           SET data = $1, is_partial = false, updated_at = NOW()
+           WHERE id = $2 AND form_id = $3
+           RETURNING *`,
+          [JSON.stringify(data), recentPartial.rows[0].id, form.id]
+        );
+        lead = updateResult.rows[0];
+        console.log('[Lead] Completed orphan partial lead:', lead.id);
+      } else {
+        // Create new complete lead
+        const leadResult = await pool.query(
+          `INSERT INTO leads (form_id, data, source, ip_address, user_agent, is_partial)
+           VALUES ($1, $2, $3, $4, $5, false)
+           RETURNING *`,
+          [form.id, JSON.stringify(data), source, ipAddress, userAgent]
+        );
+        lead = leadResult.rows[0];
+      }
     }
     const settings = form.settings || {};
     const tracking = req.body.tracking || {}; // Get tracking data
