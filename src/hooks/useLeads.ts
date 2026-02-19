@@ -104,12 +104,26 @@ export const useBulkDeleteLeads = () => {
 
 export const useExportLeads = () => {
   return useMutation({
-    mutationFn: async ({ formId, format = 'excel' }: { formId?: string; format?: 'csv' | 'excel' }) => {
+    mutationFn: async ({ formId, format = 'excel', startDate, endDate, showPartial, search }: { 
+      formId?: string; 
+      format?: 'csv' | 'excel';
+      startDate?: string;
+      endDate?: string;
+      showPartial?: boolean;
+      search?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (formId) params.append('form_id', formId);
+      if (startDate) params.append('start_date', new Date(startDate).toISOString());
+      if (endDate) params.append('end_date', new Date(endDate + 'T23:59:59').toISOString());
+      if (showPartial) params.append('show_partial', 'true');
+      if (search) params.append('search', search);
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
       const endpoint = format === 'excel' 
-        ? `${API_CONFIG.ENDPOINTS.LEADS}/export/excel${formId ? `?form_id=${formId}` : ''}`
-        : `${API_CONFIG.ENDPOINTS.LEADS}/export/csv${formId ? `?form_id=${formId}` : ''}`;
+        ? `${API_CONFIG.ENDPOINTS.LEADS}/export/excel${queryString}`
+        : `${API_CONFIG.ENDPOINTS.LEADS}/export/csv${queryString}`;
       
-      // For file download, we need to handle it differently
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
         headers: {
@@ -121,7 +135,6 @@ export const useExportLeads = () => {
         throw new Error('Erro ao exportar leads');
       }
       
-      // Get the blob and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
