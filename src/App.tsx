@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 // Public pages
 import Login from "./pages/Login";
 import PublicForm from "./pages/public/PublicForm";
+import ThankYouPage from "./pages/public/ThankYouPage";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/" element={<Navigate to="/admin" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/f/:slug" element={<PublicForm />} />
+            <Route path="/obrigado/:slug" element={<ThankYouPage />} />
 
             {/* Admin routes */}
             <Route

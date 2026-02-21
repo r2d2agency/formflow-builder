@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1834,6 +1834,7 @@ const PublicForm: React.FC = () => {
   
   // Partial lead saving
   const { savePartialData, getPartialLeadId } = usePartialLead(slug || '');
+  const navigate = useNavigate();
 
   // Check if embed mode
   const isEmbed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
@@ -1984,11 +1985,44 @@ const PublicForm: React.FC = () => {
         throw new Error(response.error);
       }
 
-      setIsSuccess(true);
+      // Build thank you page URL with UTM params
+      const thankYouParams = new URLSearchParams();
+      
+      // Pass through UTMs from entry URL
+      const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+      for (const key of utmKeys) {
+        const val = searchParams.get(key);
+        if (val) thankYouParams.set(key, val);
+      }
+      
+      // Add fixed UTMs from form settings (only if not already set from entry URL)
+      if (displayForm?.settings) {
+        const s = displayForm.settings;
+        if (s.utm_source && !thankYouParams.has('utm_source')) thankYouParams.set('utm_source', s.utm_source);
+        if (s.utm_medium && !thankYouParams.has('utm_medium')) thankYouParams.set('utm_medium', s.utm_medium);
+        if (s.utm_campaign && !thankYouParams.has('utm_campaign')) thankYouParams.set('utm_campaign', s.utm_campaign);
+        if (s.utm_term && !thankYouParams.has('utm_term')) thankYouParams.set('utm_term', s.utm_term);
+        if (s.utm_content && !thankYouParams.has('utm_content')) thankYouParams.set('utm_content', s.utm_content);
+      }
 
+      // Pass embed mode
+      if (isEmbed) thankYouParams.set('embed', '1');
+
+      // Pass quiz result if applicable
+      if (quizResult) {
+        thankYouParams.set('quiz_score', String(quizResult.score));
+        thankYouParams.set('quiz_total', String(quizResult.total));
+        thankYouParams.set('quiz_passed', quizResult.passed ? '1' : '0');
+        thankYouParams.set('quiz_pct', String(quizResult.percentage));
+      }
+
+      const queryString = thankYouParams.toString();
+      const thankYouUrl = `/obrigado/${slug}${queryString ? '?' + queryString : ''}`;
+
+      // If external redirect is configured, go there instead
       if (displayForm?.settings?.redirect_url) {
+        setIsSuccess(true);
         setTimeout(() => {
-          // Build redirect URL with UTM parameters
           const redirectUrl = buildRedirectUrlWithUtm(
             displayForm.settings.redirect_url!,
             displayForm.settings,
@@ -2000,6 +2034,14 @@ const PublicForm: React.FC = () => {
             window.location.href = redirectUrl;
           }
         }, 2000);
+      } else {
+        // Navigate to internal thank you page
+        if (isEmbed) {
+          // In embed, navigate within iframe
+          navigate(thankYouUrl, { replace: true });
+        } else {
+          navigate(thankYouUrl, { replace: true });
+        }
       }
     } catch (err) {
       console.log('Form submitted (demo):', data);
