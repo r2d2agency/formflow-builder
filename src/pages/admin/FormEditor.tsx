@@ -373,7 +373,71 @@ const FormEditor: React.FC = () => {
                       onChange={(e) => handleSettingsChange('redirect_url', e.target.value)}
                       placeholder="https://exemplo.com/obrigado"
                     />
-                  </div>
+                   </div>
+
+                  {/* UTM Parameters for Redirect */}
+                  {localForm.settings?.redirect_url && (
+                    <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        🎯 Parâmetros UTM (Conversão Meta/Google)
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Configure UTMs fixos ou ative o repasse automático dos UTMs da URL de entrada para a URL de redirecionamento.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="utm_passthrough"
+                          checked={localForm.settings?.utm_passthrough !== false}
+                          onCheckedChange={(checked) => handleSettingsChange('utm_passthrough', !!checked)}
+                        />
+                        <Label htmlFor="utm_passthrough" className="text-sm">
+                          Repassar UTMs da URL de entrada automaticamente
+                        </Label>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="utm_source" className="text-xs">utm_source</Label>
+                          <Input
+                            id="utm_source"
+                            value={localForm.settings?.utm_source || ''}
+                            onChange={(e) => handleSettingsChange('utm_source', e.target.value)}
+                            placeholder="facebook"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="utm_medium" className="text-xs">utm_medium</Label>
+                          <Input
+                            id="utm_medium"
+                            value={localForm.settings?.utm_medium || ''}
+                            onChange={(e) => handleSettingsChange('utm_medium', e.target.value)}
+                            placeholder="cpc"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="utm_campaign" className="text-xs">utm_campaign</Label>
+                          <Input
+                            id="utm_campaign"
+                            value={localForm.settings?.utm_campaign || ''}
+                            onChange={(e) => handleSettingsChange('utm_campaign', e.target.value)}
+                            placeholder="campanha-leads"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="utm_content" className="text-xs">utm_content</Label>
+                          <Input
+                            id="utm_content"
+                            value={localForm.settings?.utm_content || ''}
+                            onChange={(e) => handleSettingsChange('utm_content', e.target.value)}
+                            placeholder="banner-topo"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="success_message">Mensagem de Sucesso</Label>

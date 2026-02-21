@@ -42,7 +42,46 @@ const generateUUID = (): string => {
   });
 };
 
-// Helper to apply custom colors
+// Helper to build redirect URL with UTM parameters
+const buildRedirectUrlWithUtm = (
+  baseUrl: string,
+  settings: import('@/types').FormSettings,
+  searchParams: URLSearchParams
+): string => {
+  try {
+    const url = new URL(baseUrl);
+    
+    // 1. Add fixed UTMs from form settings (lower priority)
+    const fixedUtms: Record<string, string | undefined> = {
+      utm_source: settings.utm_source,
+      utm_medium: settings.utm_medium,
+      utm_campaign: settings.utm_campaign,
+      utm_term: settings.utm_term,
+      utm_content: settings.utm_content,
+    };
+    
+    for (const [key, value] of Object.entries(fixedUtms)) {
+      if (value && !url.searchParams.has(key)) {
+        url.searchParams.set(key, value);
+      }
+    }
+
+    // 2. Pass through UTMs from entry URL (higher priority - overrides fixed)
+    if (settings.utm_passthrough !== false) {
+      const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+      for (const key of utmKeys) {
+        const val = searchParams.get(key);
+        if (val) {
+          url.searchParams.set(key, val);
+        }
+      }
+    }
+
+    return url.toString();
+  } catch {
+    return baseUrl;
+  }
+};
 const useCustomStyles = (form: Form | undefined) => {
   const primaryColor = form?.settings?.primary_color || '#1e40af';
   const backgroundColor = form?.settings?.background_color || '#f8fafc';
@@ -1949,11 +1988,16 @@ const PublicForm: React.FC = () => {
 
       if (displayForm?.settings?.redirect_url) {
         setTimeout(() => {
+          // Build redirect URL with UTM parameters
+          const redirectUrl = buildRedirectUrlWithUtm(
+            displayForm.settings.redirect_url!,
+            displayForm.settings,
+            searchParams
+          );
           if (isEmbed) {
-            // For embed, open in parent window
-            window.parent.location.href = displayForm.settings.redirect_url!;
+            window.parent.location.href = redirectUrl;
           } else {
-            window.location.href = displayForm.settings.redirect_url!;
+            window.location.href = redirectUrl;
           }
         }, 2000);
       }

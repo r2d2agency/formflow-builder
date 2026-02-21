@@ -128,6 +128,13 @@ export interface FormSettings {
   // Download Button
   download_button_text?: string;
   download_button_url?: string;
+  // UTM Settings for redirect
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  utm_passthrough?: boolean; // Pass UTMs from entry URL to redirect
   // Quiz Settings
   is_quiz_mode?: boolean;
   max_attempts_per_user?: number;
