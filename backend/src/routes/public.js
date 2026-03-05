@@ -190,6 +190,18 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                // Use whatsapp_message for the lead (as per user request swap)
                let rawMessage = settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
                
+               // Parse JSON string if needed
+               if (typeof rawMessage === 'string') {
+                   try {
+                       const parsed = JSON.parse(rawMessage);
+                       if (parsed && typeof parsed === 'object') {
+                           rawMessage = parsed;
+                       }
+                   } catch (e) {
+                       // Not JSON, treat as plain text
+                   }
+               }
+               
                if (typeof rawMessage === 'string') {
                    itemsToSend.push({ type: 'text', content: rawMessage });
                } else if (typeof rawMessage === 'object' && rawMessage !== null) {
