@@ -322,13 +322,20 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                        } else if (item.type === 'audio') {
                            endpoint = '/message/sendWhatsAppAudio';
                            payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3'); 
-                        } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
-                            endpoint = '/message/sendMedia';
-                            payload.mediatype = item.type;
-                            payload.media = getMediaContent(item.content, item.mimeType);
-                            payload.caption = '';
-                            if (item.filename) payload.fileName = item.filename;
-                            if (item.mimeType) payload.mimetype = item.mimeType;
+                         } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
+                             endpoint = '/message/sendMedia';
+                             payload.mediatype = item.type;
+                             // Send URL directly to Evolution API - it supports fetching from URLs
+                             // Only convert to base64 for local files that the API can't access
+                             const mediaUrl = item.content;
+                             if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
+                                 payload.media = mediaUrl;
+                             } else {
+                                 payload.media = getMediaContent(mediaUrl, item.mimeType);
+                             }
+                             payload.caption = '';
+                             if (item.filename) payload.fileName = item.filename;
+                             if (item.mimeType) payload.mimetype = item.mimeType;
                        } else {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(String(item.content || ''));

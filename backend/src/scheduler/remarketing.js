@@ -163,12 +163,12 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
         };
       } else {
         endpoint = '/message/sendMedia';
-        const mediaData = getMediaContent(finalContent, null);
-        
-        // Must be base64 or valid URL
-        if (!mediaData.startsWith('data:') && !mediaData.startsWith('http')) {
-            console.error('[Scheduler] Invalid media content:', finalContent);
-            return { success: false, error: 'Invalid media content' };
+        // Send URL directly if it's an HTTP URL, otherwise convert local files
+        let mediaData = finalContent;
+        if (finalContent && (finalContent.startsWith('http://') || finalContent.startsWith('https://'))) {
+            mediaData = finalContent; // Evolution API fetches from URL directly
+        } else {
+            mediaData = getMediaContent(finalContent, null);
         }
 
         body = {

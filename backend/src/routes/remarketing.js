@@ -388,12 +388,17 @@ router.post('/campaigns/:id/test', async (req, res) => {
         } else if (type === 'audio') {
              endpoint = '/message/sendWhatsAppAudio';
              payload.audio = getMediaContent(content, 'audio/mp3'); 
-         } else if (['video', 'document', 'image'].includes(type)) {
-              endpoint = '/message/sendMedia';
-              payload.mediatype = type;
-              payload.media = getMediaContent(content, null);
-              payload.caption = '';
-              if (type === 'document') payload.fileName = 'documento-teste.pdf';
+          } else if (['video', 'document', 'image'].includes(type)) {
+               endpoint = '/message/sendMedia';
+               payload.mediatype = type;
+               // Send URL directly to Evolution API
+               if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
+                   payload.media = content;
+               } else {
+                   payload.media = getMediaContent(content, null);
+               }
+               payload.caption = '';
+               if (type === 'document') payload.fileName = 'documento-teste.pdf';
         }
 
         const url = instance.internal_api_url || instance.api_url;
