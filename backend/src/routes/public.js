@@ -227,35 +227,38 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                };
 
                // Helper to convert local media URL to Base64
-               const getMediaContent = (url, mimeType) => {
-                   try {
-                       if (!url || typeof url !== 'string') return url;
-                       
-                       if (url.includes('/api/uploads/')) {
-                           const parts = url.split('/api/uploads/');
-                           if (parts.length >= 2) {
-                               const subPath = parts[1];
-                               const cleanSubPath = subPath.replace(/\\/g, '/');
-                               const pathParts = cleanSubPath.split('/');
-                               
-                               if (pathParts.length >= 2) {
-                                   const type = pathParts[0];
-                                   const filename = pathParts.slice(1).join('/');
-                                   
-                                   const uploadDir = process.env.UPLOAD_DIR || '/app/uploads';
-                                   const filePath = path.join(uploadDir, type, filename);
-                                   
-                                   if (fs.existsSync(filePath)) {
-                                       console.log(`[WhatsApp] Converting local file to Base64: ${filePath}`);
-                                       const fileBuffer = fs.readFileSync(filePath);
-                                       const base64 = fileBuffer.toString('base64');
-                                       return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
-                                   } else {
-                                       console.warn(`[WhatsApp] Local file not found: ${filePath}`);
-                                   }
-                               }
-                           }
-                       }
+                const getMediaContent = (url, mimeType) => {
+                    try {
+                        if (!url || typeof url !== 'string') return url;
+                        
+                        // Always try to read from local uploads directory when URL contains /api/uploads/
+                        // This handles any domain (own server, easypanel, etc.)
+                        if (url.includes('/api/uploads/') || url.includes('/uploads/')) {
+                            const uploadMarker = url.includes('/api/uploads/') ? '/api/uploads/' : '/uploads/';
+                            const parts = url.split(uploadMarker);
+                            if (parts.length >= 2) {
+                                const subPath = parts[parts.length - 1]; // Use last part to handle nested URLs
+                                const cleanSubPath = subPath.replace(/\\/g, '/');
+                                const pathParts = cleanSubPath.split('/');
+                                
+                                if (pathParts.length >= 2) {
+                                    const type = pathParts[0];
+                                    const filename = pathParts.slice(1).join('/');
+                                    
+                                    const uploadDir = process.env.UPLOAD_DIR || '/app/uploads';
+                                    const filePath = path.join(uploadDir, type, filename);
+                                    
+                                    if (fs.existsSync(filePath)) {
+                                        console.log(`[WhatsApp] Converting local file to Base64: ${filePath}`);
+                                        const fileBuffer = fs.readFileSync(filePath);
+                                        const base64 = fileBuffer.toString('base64');
+                                        return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
+                                    } else {
+                                        console.warn(`[WhatsApp] Local file not found: ${filePath}`);
+                                    }
+                                }
+                            }
+                        }
                        
                        if (url.includes('localhost')) {
                            try {
