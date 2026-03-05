@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { getMediaContent } = require('../utils/mediaHelper');
 
 // --- Migration Helper (Temporary) ---
 router.get('/migrate-schema', async (req, res) => {
@@ -386,11 +387,11 @@ router.post('/campaigns/:id/test', async (req, res) => {
              payload.text = replaceVars(content);
         } else if (type === 'audio') {
              endpoint = '/message/sendWhatsAppAudio';
-             payload.audio = content; 
+             payload.audio = getMediaContent(content, 'audio/mp3'); 
          } else if (['video', 'document', 'image'].includes(type)) {
               endpoint = '/message/sendMedia';
               payload.mediatype = type;
-              payload.media = content;
+              payload.media = getMediaContent(content, null);
               payload.caption = '';
               if (type === 'document') payload.fileName = 'documento-teste.pdf';
         }

@@ -1,4 +1,5 @@
 const process = require('process');
+const { getMediaContent } = require('../utils/mediaHelper');
 
 // Helper to find phone number
 const findField = (data, searchTerms) => {
@@ -154,20 +155,29 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
     };
 
     if (type !== 'text') {
-      endpoint = '/message/sendMedia';
-      
-      // Basic URL check
-      if (!finalContent.startsWith('http')) {
-          console.error('[Scheduler] Invalid media URL:', finalContent);
-          return { success: false, error: 'Invalid media URL' };
-      }
+      if (type === 'audio') {
+        endpoint = '/message/sendWhatsAppAudio';
+        body = {
+          number: cleanPhone,
+          audio: getMediaContent(finalContent, 'audio/mp3')
+        };
+      } else {
+        endpoint = '/message/sendMedia';
+        const mediaData = getMediaContent(finalContent, null);
+        
+        // Must be base64 or valid URL
+        if (!mediaData.startsWith('data:') && !mediaData.startsWith('http')) {
+            console.error('[Scheduler] Invalid media content:', finalContent);
+            return { success: false, error: 'Invalid media content' };
+        }
 
-      body = {
-        number: cleanPhone,
-        mediatype: type, 
-        media: finalContent,
-        caption: ''
-      };
+        body = {
+          number: cleanPhone,
+          mediatype: type, 
+          media: mediaData,
+          caption: ''
+        };
+      }
     }
 
     try {
