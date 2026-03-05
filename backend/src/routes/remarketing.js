@@ -387,12 +387,14 @@ router.post('/campaigns/:id/test', async (req, res) => {
         } else if (type === 'audio') {
              endpoint = '/message/sendWhatsAppAudio';
              payload.audio = content; 
-        } else if (['video', 'document', 'image'].includes(type)) {
-             endpoint = '/message/sendMedia';
-             payload.mediatype = type;
-             payload.media = content;
-             // Simple mock filename
-             if (type === 'document') payload.fileName = 'documento-teste.pdf';
+         } else if (['video', 'document', 'image'].includes(type)) {
+              endpoint = '/message/sendMedia';
+              payload.mediaMessage = {
+                  mediatype: type,
+                  media: content,
+                  caption: '',
+              };
+              if (type === 'document') payload.mediaMessage.fileName = 'documento-teste.pdf';
         }
 
         const url = instance.internal_api_url || instance.api_url;
