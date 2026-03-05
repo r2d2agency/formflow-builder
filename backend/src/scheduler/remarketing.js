@@ -164,11 +164,9 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
 
       body = {
         number: cleanPhone,
-        mediaMessage: {
-          mediatype: type, 
-          media: finalContent,
-          caption: '' 
-        }
+        mediatype: type, 
+        media: finalContent,
+        caption: ''
       };
     }
 

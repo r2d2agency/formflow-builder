@@ -309,13 +309,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3'); 
                         } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                             endpoint = '/message/sendMedia';
-                            payload.mediaMessage = {
-                                mediatype: item.type,
-                                media: getMediaContent(item.content, item.mimeType),
-                                caption: '',
-                            };
-                            if (item.filename) payload.mediaMessage.fileName = item.filename;
-                            if (item.mimeType) payload.mediaMessage.mimetype = item.mimeType;
+                            payload.mediatype = item.type;
+                            payload.media = getMediaContent(item.content, item.mimeType);
+                            payload.caption = '';
+                            if (item.filename) payload.fileName = item.filename;
+                            if (item.mimeType) payload.mimetype = item.mimeType;
                        } else {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(String(item.content || ''));
