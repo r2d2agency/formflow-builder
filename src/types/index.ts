@@ -97,6 +97,7 @@ export interface FormSettings {
   // RD Station
   rdstation_enabled?: boolean;
   rdstation_api_token?: string;
+  rdstation_private_token?: string;
   rdstation_conversion_identifier?: string;
   // Webhook
   webhook_url?: string;
