@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useForms, useDeleteForm, useImportForm, exportForm } from '@/hooks/useForms';
+import { useForms, useDeleteForm, useImportForm, useUpdateForm, exportForm } from '@/hooks/useForms';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -31,6 +31,10 @@ import {
   ExternalLink,
   Download,
   Upload,
+  Pencil,
+  Check,
+  X,
+  Users,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
@@ -56,9 +60,12 @@ const FormsList: React.FC = () => {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [page] = useState(1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
   
   const { data, isLoading, error } = useForms(page, 20);
   const deleteForm = useDeleteForm();
+  const updateForm = useUpdateForm();
   const importForm = useImportForm();
   const navigate = useNavigate();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -83,12 +90,35 @@ const FormsList: React.FC = () => {
           variant: 'destructive',
         });
       }
-      // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleStartRename = (form: Form) => {
+    setEditingId(form.id);
+    setEditingName(form.name);
+  };
+
+  const handleSaveRename = async () => {
+    if (!editingId || !editingName.trim()) return;
+    try {
+      await updateForm.mutateAsync({ id: editingId, data: { name: editingName.trim() } });
+    } catch {}
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleCancelRename = () => {
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSaveRename();
+    if (e.key === 'Escape') handleCancelRename();
   };
 
   // Mock data for demo
@@ -137,6 +167,8 @@ const FormsList: React.FC = () => {
     form.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalLeads = forms.reduce((sum, f) => sum + (f.submissions_count ?? 0), 0);
+
   const handleCopyLink = (slug: string) => {
     const url = `${window.location.origin}/f/${slug}`;
     navigator.clipboard.writeText(url);
@@ -181,6 +213,31 @@ const FormsList: React.FC = () => {
               Novo Formulário
             </Button>
           </div>
+        </div>
+
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Total de Leads</span>
+              </div>
+              <p className="text-2xl font-bold mt-1">{totalLeads}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-sm text-muted-foreground">Formulários</div>
+              <p className="text-2xl font-bold mt-1">{forms.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-sm text-muted-foreground">Ativos</div>
+              <p className="text-2xl font-bold mt-1">{forms.filter(f => f.is_active).length}</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search */}
@@ -229,10 +286,38 @@ const FormsList: React.FC = () => {
                   {filteredForms.map((form) => (
                     <TableRow key={form.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{form.name}</p>
-                          <p className="text-sm text-muted-foreground">/{form.slug}</p>
-                        </div>
+                        {editingId === form.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={handleRenameKeyDown}
+                              className="h-8 text-sm"
+                              autoFocus
+                            />
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveRename}>
+                              <Check className="h-3.5 w-3.5 text-green-600" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCancelRename}>
+                              <X className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="group flex items-center gap-1.5">
+                            <div>
+                              <p className="font-medium">{form.name}</p>
+                              <p className="text-sm text-muted-foreground">/{form.slug}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleStartRename(form)}
+                            >
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
@@ -244,7 +329,9 @@ const FormsList: React.FC = () => {
                           {form.is_active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{form.submissions_count ?? 0}</TableCell>
+                      <TableCell>
+                        <span className="font-semibold">{form.submissions_count ?? 0}</span>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {form.settings.whatsapp_notification && (
@@ -267,6 +354,10 @@ const FormsList: React.FC = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleStartRename(form)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Renomear
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/admin/forms/${form.id}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
