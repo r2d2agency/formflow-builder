@@ -947,16 +947,29 @@ const FormEditor: React.FC = () => {
                 {localForm.settings?.rdstation_enabled && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="rdstation_api_token">Token da API</Label>
+                      <Label htmlFor="rdstation_private_token">Token Privado (recomendado)</Label>
+                      <Input
+                        id="rdstation_private_token"
+                        type="password"
+                        value={localForm.settings?.rdstation_private_token || ''}
+                        onChange={(e) => handleSettingsChange('rdstation_private_token', e.target.value)}
+                        placeholder="seu-token-privado-rdstation"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Token privado gerado em RD Station → Conta → Integrações → Tokens. Usado com autenticação Bearer.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rdstation_api_token">Token Público (alternativo)</Label>
                       <Input
                         id="rdstation_api_token"
                         type="password"
                         value={localForm.settings?.rdstation_api_token || ''}
                         onChange={(e) => handleSettingsChange('rdstation_api_token', e.target.value)}
-                        placeholder="seu-token-api-rdstation"
+                        placeholder="seu-token-publico-rdstation"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Token de integração gerado em RD Station → Integrações → Tokens
+                        Token público. Usado apenas se o token privado não estiver preenchido.
                       </p>
                     </div>
                     <div className="space-y-2">

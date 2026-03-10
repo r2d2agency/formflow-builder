@@ -546,9 +546,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
     })());
   }
 
-  // 4. RD Station (New)
+  // 4. RD Station
   const rdToken = settings.rdstation_api_token || settings.rd_station_token;
-  if (rdToken && settings.rdstation_enabled) {
+  const rdPrivateToken = settings.rdstation_private_token;
+  if ((rdToken || rdPrivateToken) && settings.rdstation_enabled) {
     integrations.push((async () => {
       try {
         console.log('[RD Station] Processing...');
@@ -569,12 +570,32 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           }
         };
 
-        // Use Public Token endpoint
-        const rdResponse = await fetch(`https://api.rd.services/platform/conversions_client/v1/conversions?api_key=${rdToken}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        // Try private token first (Bearer auth), fallback to public token endpoint
+        const rdPrivateToken = settings.rdstation_private_token;
+        let rdResponse;
+        
+        if (rdPrivateToken) {
+          console.log('[RD Station] Using private token (Bearer auth)');
+          rdResponse = await fetch('https://api.rd.services/platform/conversions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'accept': 'application/json',
+              'Authorization': `Bearer ${rdPrivateToken}`,
+            },
+            body: JSON.stringify(payload),
+          });
+        } else {
+          console.log('[RD Station] Using public token');
+          rdResponse = await fetch(`https://api.rd.services/platform/conversions?api_key=${rdToken}`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'accept': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+        }
 
         if (!rdResponse.ok) {
           let rdErr = {};
