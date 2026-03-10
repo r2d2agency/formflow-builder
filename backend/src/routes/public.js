@@ -560,18 +560,38 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           return;
         }
 
+        // Build RD Station payload with standard + custom fields
+        const nome = findField(data, ['nome', 'name', 'nome completo', 'full name']) || '';
+        const telefone = findField(data, ['telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile']) || '';
+        
+        // Standard RD fields
+        const rdPayloadFields = {
+          conversion_identifier: settings.rdstation_conversion_identifier || form.slug,
+          email: String(email).trim(),
+          name: String(nome).trim(),
+          personal_phone: String(telefone).trim(),
+          mobile_phone: String(telefone).trim(),
+          traffic_source: form.name || 'Formulario',
+          tags: [form.slug, 'formulario'],
+        };
+
+        // Add all form data as custom fields (cf_ prefix)
+        for (const [key, value] of Object.entries(data)) {
+          const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          // Skip fields already mapped above
+          if (['email', 'e_mail', 'mail', 'nome', 'name', 'nome_completo', 'telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile'].includes(normalizedKey)) continue;
+          rdPayloadFields[`cf_${normalizedKey}`] = String(value || '');
+        }
+
         const payload = {
           event_type: "CONVERSION",
           event_family: "CDP",
-          payload: {
-            conversion_identifier: settings.rdstation_conversion_identifier || form.slug,
-            email: String(email).trim(),
-            ...data
-          }
+          payload: rdPayloadFields
         };
 
+        console.log('[RD Station] Payload:', JSON.stringify(payload));
+
         // Try private token first (Bearer auth), fallback to public token endpoint
-        const rdPrivateToken = settings.rdstation_private_token;
         let rdResponse;
         
         if (rdPrivateToken) {
