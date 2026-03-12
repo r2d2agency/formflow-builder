@@ -549,7 +549,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
   // 4. RD Station
   const rdToken = settings.rdstation_api_token || settings.rd_station_token;
   const rdPrivateToken = settings.rdstation_private_token;
-  if ((rdToken || rdPrivateToken) && settings.rdstation_enabled) {
+  if (settings.rdstation_enabled) {
+    if (!rdPrivateToken) {
+      console.warn('[RD Station] Skipped: Private token is required but missing');
+      await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', {}, null, 'Token Privado do RD Station não configurado. A API de eventos exige autenticação Bearer (Token Privado).');
+    } else {
     integrations.push((async () => {
       try {
         console.log('[RD Station] Processing...');
@@ -600,31 +604,17 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
 
         console.log('[RD Station] Payload:', JSON.stringify(payload));
 
-        // Try private token first (Bearer auth), fallback to public token endpoint
-        let rdResponse;
-        
-        if (rdPrivateToken) {
-          console.log('[RD Station] Using private token (Bearer auth)');
-          rdResponse = await fetch('https://api.rd.services/platform/events?event_type=conversion', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'accept': 'application/json',
-              'Authorization': `Bearer ${rdPrivateToken}`,
-            },
-            body: JSON.stringify(payload),
-          });
-        } else {
-          console.log('[RD Station] Using public token');
-          rdResponse = await fetch(`https://api.rd.services/platform/events?event_type=conversion&api_key=${rdToken}`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'accept': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-        }
+        // Private token is guaranteed to exist due to the check above
+        console.log('[RD Station] Using private token (Bearer auth)');
+        const rdResponse = await fetch('https://api.rd.services/platform/events?event_type=conversion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'Authorization': `Bearer ${rdPrivateToken}`,
+          },
+          body: JSON.stringify(payload),
+        });
 
         if (!rdResponse.ok) {
           let rdErr = {};
@@ -661,6 +651,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', {}, null, error.message);
       }
     })());
+    }
   }
 
   // Execute all integrations in parallel (background)
