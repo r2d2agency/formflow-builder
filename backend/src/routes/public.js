@@ -549,7 +549,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
   // 4. RD Station
   const rdToken = settings.rdstation_api_token || settings.rd_station_token;
   const rdPrivateToken = settings.rdstation_private_token;
-  if ((rdToken || rdPrivateToken) && settings.rdstation_enabled) {
+  if (settings.rdstation_enabled) {
+    if (!rdPrivateToken) {
+      console.warn('[RD Station] Skipped: Private token is required but missing');
+      await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', {}, null, 'Token Privado do RD Station não configurado. A API de eventos exige autenticação Bearer (Token Privado).');
+    } else {
     integrations.push((async () => {
       try {
         console.log('[RD Station] Processing...');
