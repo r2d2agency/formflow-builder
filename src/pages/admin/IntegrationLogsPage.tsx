@@ -185,8 +185,8 @@ const IntegrationLogsPage: React.FC = () => {
         </Card>
 
         <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-          <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-            <DialogHeader>
+          <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Detalhes da Integração</DialogTitle>
               <DialogDescription>
                 Informações completas sobre a execução
@@ -194,8 +194,8 @@ const IntegrationLogsPage: React.FC = () => {
             </DialogHeader>
             
             {selectedLog && (
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-6">
+              <ScrollArea className="flex-1 min-h-0 max-h-[calc(85vh-120px)] pr-4">
+                <div className="space-y-6 pb-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="font-semibold mb-1">Status</h4>
@@ -229,8 +229,8 @@ const IntegrationLogsPage: React.FC = () => {
 
                   <div>
                     <h4 className="font-semibold mb-2">Payload Enviado</h4>
-                    <div className="bg-slate-950 text-slate-50 p-4 rounded-md overflow-x-auto">
-                      <pre className="text-xs font-mono">
+                    <div className="bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[300px]">
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                         {JSON.stringify(selectedLog.payload, null, 2)}
                       </pre>
                     </div>
@@ -238,8 +238,8 @@ const IntegrationLogsPage: React.FC = () => {
 
                   <div>
                     <h4 className="font-semibold mb-2">Resposta Recebida</h4>
-                    <div className="bg-slate-950 text-slate-50 p-4 rounded-md overflow-x-auto">
-                      <pre className="text-xs font-mono">
+                    <div className="bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[300px]">
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                         {JSON.stringify(selectedLog.response, null, 2)}
                       </pre>
                     </div>
