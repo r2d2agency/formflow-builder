@@ -628,13 +628,24 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
 
         if (!rdResponse.ok) {
           let rdErr = {};
+          let rawText = '';
           try {
-            const text = await rdResponse.text();
-            try { rdErr = JSON.parse(text); } catch { rdErr = { message: text }; }
+            rawText = await rdResponse.text();
+            try { rdErr = JSON.parse(rawText); } catch { rdErr = { raw_response: rawText }; }
           } catch (e) { rdErr = { message: 'Could not read response body' }; }
           
-          console.error('[RD Station] API Error:', JSON.stringify(rdErr));
-          await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', payload, rdErr, rdErr.errors?.[0]?.message || rdErr.message);
+          rdErr.http_status = rdResponse.status;
+          rdErr.http_status_text = rdResponse.statusText;
+          
+          const errorMsg = rdErr.errors?.[0]?.error_message 
+            || rdErr.errors?.[0]?.message 
+            || rdErr.error_message 
+            || rdErr.message 
+            || rawText 
+            || `HTTP ${rdResponse.status} ${rdResponse.statusText}`;
+          
+          console.error('[RD Station] API Error:', rdResponse.status, JSON.stringify(rdErr));
+          await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', payload, rdErr, errorMsg);
         } else {
           console.log('[RD Station] Sent successfully');
           let rdRes = {};
