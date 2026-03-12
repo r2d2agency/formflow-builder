@@ -604,31 +604,17 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
 
         console.log('[RD Station] Payload:', JSON.stringify(payload));
 
-        // Try private token first (Bearer auth), fallback to public token endpoint
-        let rdResponse;
-        
-        if (rdPrivateToken) {
-          console.log('[RD Station] Using private token (Bearer auth)');
-          rdResponse = await fetch('https://api.rd.services/platform/events?event_type=conversion', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'accept': 'application/json',
-              'Authorization': `Bearer ${rdPrivateToken}`,
-            },
-            body: JSON.stringify(payload),
-          });
-        } else {
-          console.log('[RD Station] Using public token');
-          rdResponse = await fetch(`https://api.rd.services/platform/events?event_type=conversion&api_key=${rdToken}`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'accept': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-        }
+        // Private token is guaranteed to exist due to the check above
+        console.log('[RD Station] Using private token (Bearer auth)');
+        const rdResponse = await fetch('https://api.rd.services/platform/events?event_type=conversion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'Authorization': `Bearer ${rdPrivateToken}`,
+          },
+          body: JSON.stringify(payload),
+        });
 
         if (!rdResponse.ok) {
           let rdErr = {};
@@ -665,6 +651,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         await logIntegration(pool, form.id, lead.id, 'rdstation', 'error', {}, null, error.message);
       }
     })());
+    }
   }
 
   // Execute all integrations in parallel (background)
