@@ -583,6 +583,15 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           rdPayloadFields[`cf_${normalizedKey}`] = String(value || '');
         }
 
+        // Add legal bases for LGPD compliance
+        rdPayloadFields.legal_bases = [
+          {
+            category: "communications",
+            type: "consent",
+            status: "granted"
+          }
+        ];
+
         const payload = {
           event_type: "CONVERSION",
           event_family: "CDP",
@@ -596,7 +605,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
         
         if (rdPrivateToken) {
           console.log('[RD Station] Using private token (Bearer auth)');
-          rdResponse = await fetch('https://api.rd.services/platform/conversions', {
+          rdResponse = await fetch('https://api.rd.services/platform/events?event_type=conversion', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -607,7 +616,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
           });
         } else {
           console.log('[RD Station] Using public token');
-          rdResponse = await fetch(`https://api.rd.services/platform/conversions?api_key=${rdToken}`, {
+          rdResponse = await fetch(`https://api.rd.services/platform/events?event_type=conversion&api_key=${rdToken}`, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
