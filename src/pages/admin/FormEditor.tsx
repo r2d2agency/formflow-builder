@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import type { Form, FormField, FormSettings } from '@/types';
+import type { Form, FormField, FormSettings, GleegoRoutingRule } from '@/types';
 import LogoUploader from '@/components/forms/LogoUploader';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
 import SortableFieldEditor from '@/components/forms/SortableFieldEditor';
