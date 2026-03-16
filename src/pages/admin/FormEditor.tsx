@@ -46,6 +46,9 @@ import {
   Code,
   Copy,
   Check,
+  Key,
+  RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
