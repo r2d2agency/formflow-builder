@@ -300,4 +300,25 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/forms/:id/generate-api-key
+router.post('/:id/generate-api-key', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+    const crypto = require('crypto');
+    const apiKey = 'fb_' + crypto.randomBytes(24).toString('hex');
+
+    // Update form settings with new API key
+    await pool.query(
+      `UPDATE forms SET settings = jsonb_set(COALESCE(settings, '{}'), '{api_key}', $1::jsonb), updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(apiKey), id]
+    );
+
+    res.json({ success: true, data: { api_key: apiKey } });
+  } catch (error) {
+    console.error('Generate API key error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao gerar API key' });
+  }
+});
+
 module.exports = router;
