@@ -956,4 +956,13 @@ router.get('/forms/:slug', async (req, res) => {
   }
 });
 
+// ============================
+// API v1 - Public REST API for external systems
+// ============================
+
+// POST /api/v1/forms/:slug/leads - Submit lead via external API
+router.post('/v1/forms/:slug/leads', async (req, res) => {
+  // Also mount at /api/v1 level - handled by router prefix
+});
+
 module.exports = router;
