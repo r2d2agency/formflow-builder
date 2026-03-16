@@ -39,6 +39,15 @@ export interface ChangePasswordPayload {
 // Form Types
 export type FormType = 'typeform' | 'chat' | 'standard' | 'link_bio';
 
+// Gleego Routing Rule
+export interface GleegoRoutingRule {
+  id: string;
+  name: string;
+  sources: string; // comma-separated: "google,facebook"
+  token: string;
+  enabled: boolean;
+}
+
 export interface OptionWithImage {
   value: string;
   label: string;
@@ -142,6 +151,7 @@ export interface FormSettings {
   // Gleego CRM
   gleego_enabled?: boolean;
   gleego_token?: string;
+  gleego_routing_rules?: GleegoRoutingRule[];
   // Quiz Settings
   is_quiz_mode?: boolean;
   max_attempts_per_user?: number;
