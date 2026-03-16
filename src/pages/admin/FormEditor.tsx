@@ -990,6 +990,64 @@ const FormEditor: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Gleego CRM Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  Gleego CRM
+                </CardTitle>
+                <CardDescription>
+                  Envie leads automaticamente para o Gleego via API de Webhooks
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Integração Gleego</p>
+                    <p className="text-sm text-muted-foreground">
+                      Criar leads no CRM Gleego automaticamente
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localForm.settings?.gleego_enabled}
+                    onCheckedChange={(v) => handleSettingsChange('gleego_enabled', v)}
+                  />
+                </div>
+                {localForm.settings?.gleego_enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="gleego_token">Token da API</Label>
+                      <Input
+                        id="gleego_token"
+                        type="password"
+                        value={localForm.settings?.gleego_token || ''}
+                        onChange={(e) => handleSettingsChange('gleego_token', e.target.value)}
+                        placeholder="cole-seu-token-gleego-aqui"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Gere o token em{' '}
+                        <a href="https://whats.gleego.com.br/api-docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                          whats.gleego.com.br → API → Tokens
+                        </a>
+                        . O token direciona os leads para o funil configurado no Gleego.
+                      </p>
+                      {!localForm.settings?.gleego_token && (
+                        <p className="text-xs text-destructive font-medium">
+                          ⚠️ Sem o Token a integração não funcionará.
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground">Campos mapeados automaticamente:</p>
+                      <p>• Nome, Telefone/WhatsApp, E-mail, Empresa, Cidade, Estado, Valor</p>
+                      <p>• Campos extras são enviados como campos personalizados</p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Webhook</CardTitle>

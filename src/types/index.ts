@@ -139,6 +139,9 @@ export interface FormSettings {
   // API Pública
   api_enabled?: boolean;
   api_key?: string;
+  // Gleego CRM
+  gleego_enabled?: boolean;
+  gleego_token?: string;
   // Quiz Settings
   is_quiz_mode?: boolean;
   max_attempts_per_user?: number;
