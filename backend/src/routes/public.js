@@ -46,7 +46,7 @@ const logIntegration = async (pool, formId, leadId, type, status, payload, respo
 // Async function to process integrations (Fire and Forget)
 const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking = {}) => {
   const settings = form.settings || {};
-  console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}`);
+  console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}, Gleego=${!!settings.gleego_enabled}`);
   const integrations = [];
 
   // 1. Webhook
