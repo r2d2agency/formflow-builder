@@ -230,7 +230,6 @@ router.get('/:id/export', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, slug, description, type, fields, settings, is_active } = req.body;
     const formId = req.params.id;
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
@@ -246,12 +245,33 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Build dynamic update query with only provided fields
+    const allowedFields = ['name', 'slug', 'description', 'type', 'fields', 'settings', 'is_active'];
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
+
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        const value = (field === 'fields' || field === 'settings')
+          ? JSON.stringify(req.body[field])
+          : req.body[field];
+        setClauses.push(`${field} = $${paramIndex}`);
+        values.push(value);
+        paramIndex++;
+      }
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    }
+
+    setClauses.push(`updated_at = NOW()`);
+    values.push(formId);
+
     const result = await pool.query(
-      `UPDATE forms 
-       SET name = $1, slug = $2, description = $3, type = $4, fields = $5, settings = $6, is_active = $7
-       WHERE id = $8
-       RETURNING *`,
-      [name, slug, description, type, JSON.stringify(fields || []), JSON.stringify(settings || {}), is_active, formId]
+      `UPDATE forms SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
     );
 
     if (result.rows.length === 0) {
