@@ -255,6 +255,10 @@ const FormEditor: React.FC = () => {
               <BarChart3 className="h-4 w-4" />
               Rastreamento
             </TabsTrigger>
+            <TabsTrigger value="api" className="gap-2">
+              <Globe className="h-4 w-4" />
+              API
+            </TabsTrigger>
             <TabsTrigger value="embed" className="gap-2">
               <Code className="h-4 w-4" />
               Embed
