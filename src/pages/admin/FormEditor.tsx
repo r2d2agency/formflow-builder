@@ -943,7 +943,7 @@ const FormEditor: React.FC = () => {
                   <div>
                     <p className="font-medium">Integração RD Station</p>
                     <p className="text-sm text-muted-foreground">
-                      Enviar leads para o RD Station via API de Conversões
+                      Enviar leads para o RD Station via API de Eventos
                     </p>
                   </div>
                   <Switch
@@ -954,7 +954,7 @@ const FormEditor: React.FC = () => {
                 {localForm.settings?.rdstation_enabled && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="rdstation_private_token">Token Privado (recomendado)</Label>
+                      <Label htmlFor="rdstation_private_token">Token Privado (obrigatório)</Label>
                       <Input
                         id="rdstation_private_token"
                         type="password"
@@ -963,21 +963,13 @@ const FormEditor: React.FC = () => {
                         placeholder="seu-token-privado-rdstation"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Token privado gerado em RD Station → Conta → Integrações → Tokens. Usado com autenticação Bearer.
+                        Token privado gerado em RD Station → Conta → Integrações → Tokens. A API de eventos exige obrigatoriamente autenticação Bearer via Token Privado.
                       </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rdstation_api_token">Token Público (alternativo)</Label>
-                      <Input
-                        id="rdstation_api_token"
-                        type="password"
-                        value={localForm.settings?.rdstation_api_token || ''}
-                        onChange={(e) => handleSettingsChange('rdstation_api_token', e.target.value)}
-                        placeholder="seu-token-publico-rdstation"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Token público. Usado apenas se o token privado não estiver preenchido.
-                      </p>
+                      {!localForm.settings?.rdstation_private_token && (
+                        <p className="text-xs text-destructive font-medium">
+                          ⚠️ Sem o Token Privado a integração não funcionará. O Token Público não é suportado.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="rdstation_conversion_identifier">Identificador de Conversão</Label>
