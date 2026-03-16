@@ -1017,7 +1017,7 @@ const FormEditor: React.FC = () => {
                 {localForm.settings?.gleego_enabled && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="gleego_token">Token da API</Label>
+                      <Label htmlFor="gleego_token">Token Padrão da API</Label>
                       <Input
                         id="gleego_token"
                         type="password"
@@ -1026,22 +1026,115 @@ const FormEditor: React.FC = () => {
                         placeholder="cole-seu-token-gleego-aqui"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Gere o token em{' '}
+                        Token padrão usado quando nenhuma regra de roteamento corresponder. Gere em{' '}
                         <a href="https://whats.gleego.com.br/api-docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">
                           whats.gleego.com.br → API → Tokens
                         </a>
-                        . O token direciona os leads para o funil configurado no Gleego.
                       </p>
-                      {!localForm.settings?.gleego_token && (
-                        <p className="text-xs text-destructive font-medium">
-                          ⚠️ Sem o Token a integração não funcionará.
-                        </p>
+                    </div>
+
+                    {/* Routing Rules */}
+                    <div className="space-y-3 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">Regras de Roteamento por Origem</p>
+                          <p className="text-xs text-muted-foreground">
+                            Direcione leads para funis diferentes no Gleego baseado na origem (UTM source)
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const rules = localForm.settings?.gleego_routing_rules || [];
+                            handleSettingsChange('gleego_routing_rules', [
+                              ...rules,
+                              { id: crypto.randomUUID(), name: '', sources: '', token: '', enabled: true },
+                            ]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Adicionar Regra
+                        </Button>
+                      </div>
+
+                      {(localForm.settings?.gleego_routing_rules || []).map((rule: GleegoRoutingRule, index: number) => (
+                        <div key={rule.id} className="rounded-md border p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={rule.enabled}
+                                onCheckedChange={(v) => {
+                                  const rules = [...(localForm.settings?.gleego_routing_rules || [])];
+                                  rules[index] = { ...rules[index], enabled: v };
+                                  handleSettingsChange('gleego_routing_rules', rules);
+                                }}
+                              />
+                              <span className="text-sm font-medium">{rule.name || `Regra ${index + 1}`}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => {
+                                const rules = (localForm.settings?.gleego_routing_rules || []).filter((_: GleegoRoutingRule, i: number) => i !== index);
+                                handleSettingsChange('gleego_routing_rules', rules);
+                              }}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <Input
+                              placeholder="Nome da regra (ex: Google Ads)"
+                              value={rule.name}
+                              onChange={(e) => {
+                                const rules = [...(localForm.settings?.gleego_routing_rules || [])];
+                                rules[index] = { ...rules[index], name: e.target.value };
+                                handleSettingsChange('gleego_routing_rules', rules);
+                              }}
+                            />
+                            <Input
+                              placeholder="Origens (ex: google,gads)"
+                              value={rule.sources}
+                              onChange={(e) => {
+                                const rules = [...(localForm.settings?.gleego_routing_rules || [])];
+                                rules[index] = { ...rules[index], sources: e.target.value };
+                                handleSettingsChange('gleego_routing_rules', rules);
+                              }}
+                            />
+                            <Input
+                              type="password"
+                              placeholder="Token Gleego do funil"
+                              value={rule.token}
+                              onChange={(e) => {
+                                const rules = [...(localForm.settings?.gleego_routing_rules || [])];
+                                rules[index] = { ...rules[index], token: e.target.value };
+                                handleSettingsChange('gleego_routing_rules', rules);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {(localForm.settings?.gleego_routing_rules || []).length > 0 && (
+                        <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground space-y-1">
+                          <p className="font-medium text-foreground">Como funciona o roteamento:</p>
+                          <p>• O sistema verifica o <strong>utm_source</strong> do lead (capturado automaticamente da URL)</p>
+                          <p>• Se corresponder a uma regra, o lead é enviado para o token/funil dessa regra</p>
+                          <p>• Se nenhuma regra corresponder, usa o <strong>Token Padrão</strong> acima</p>
+                          <p>• Exemplo: utm_source=google → Regra "Google Ads" → Funil do vendedor A</p>
+                        </div>
                       )}
                     </div>
+
                     <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground space-y-1">
                       <p className="font-medium text-foreground">Campos mapeados automaticamente:</p>
                       <p>• Nome, Telefone/WhatsApp, E-mail, Empresa, Cidade, Estado, Valor</p>
-                      <p>• Campos extras são enviados como campos personalizados</p>
+                      <p>• UTMs são enviados como campos personalizados (utm_source, utm_medium, etc.)</p>
+                      <p>• O campo <strong>source</strong> no Gleego conterá: origem | mídia | campanha</p>
                     </div>
                   </>
                 )}
