@@ -1287,7 +1287,7 @@ const ApiSection: React.FC<{
                     onClick={generateApiKey}
                     disabled={isGenerating}
                   >
-                    <RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
+                    <RefreshCw className={"h-4 w-4" + (isGenerating ? " animate-spin" : "")} />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
