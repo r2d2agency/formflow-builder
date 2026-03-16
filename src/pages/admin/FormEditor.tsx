@@ -1146,6 +1146,15 @@ const FormEditor: React.FC = () => {
             </Card>
           </TabsContent>
 
+          {/* API Tab */}
+          <TabsContent value="api" className="space-y-4">
+            <ApiSection
+              localForm={localForm}
+              handleSettingsChange={handleSettingsChange}
+              formId={id || ''}
+            />
+          </TabsContent>
+
           {/* Embed Tab */}
           <TabsContent value="embed" className="space-y-4">
             <EmbedSection slug={localForm.slug || ''} />
