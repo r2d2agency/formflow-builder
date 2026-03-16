@@ -1960,6 +1960,29 @@ const PublicForm: React.FC = () => {
         event_id: generateUUID(),
       };
 
+      // Capture UTMs from URL
+      const utmData: Record<string, string> = {};
+      const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+      for (const key of utmKeys) {
+        const val = searchParams.get(key);
+        if (val) utmData[key] = val;
+      }
+      // Also include fixed UTMs from form settings as fallback
+      if (displayForm?.settings) {
+        const s = displayForm.settings;
+        if (s.utm_source && !utmData.utm_source) utmData.utm_source = s.utm_source;
+        if (s.utm_medium && !utmData.utm_medium) utmData.utm_medium = s.utm_medium;
+        if (s.utm_campaign && !utmData.utm_campaign) utmData.utm_campaign = s.utm_campaign;
+        if (s.utm_term && !utmData.utm_term) utmData.utm_term = s.utm_term;
+        if (s.utm_content && !utmData.utm_content) utmData.utm_content = s.utm_content;
+      }
+
+      // Enrich data with UTMs
+      const enrichedData = { ...data };
+      if (Object.keys(utmData).length > 0) {
+        enrichedData._utm = utmData;
+      }
+
       // Fire Client-side Pixel
       if (form?.settings?.facebook_pixel) {
         // @ts-ignore
@@ -1975,7 +1998,7 @@ const PublicForm: React.FC = () => {
       const response = await apiService.post(
         API_CONFIG.ENDPOINTS.SUBMIT_FORM(slug || ''),
         { 
-          data,
+          data: enrichedData,
           partial_lead_id: getPartialLeadId(), // Link to partial lead if exists
           tracking, // Send tracking data to backend
         }
