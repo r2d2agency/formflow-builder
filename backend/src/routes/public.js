@@ -46,7 +46,7 @@ const logIntegration = async (pool, formId, leadId, type, status, payload, respo
 // Async function to process integrations (Fire and Forget)
 const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking = {}) => {
   const settings = form.settings || {};
-  console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}`);
+  console.log(`[Integrations] Processing for form ${form.slug} (ID: ${form.id}). Enabled: Webhook=${!!settings.webhook_enabled}, WA=${!!settings.whatsapp_notification}, FB=${!!settings.facebook_pixel}, RD=${!!settings.rdstation_enabled}, Gleego=${!!settings.gleego_enabled}`);
   const integrations = [];
 
   // 1. Webhook
@@ -652,6 +652,84 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
       }
     })());
     }
+  }
+
+  // 5. Gleego CRM
+  if (settings.gleego_enabled && settings.gleego_token) {
+    integrations.push((async () => {
+      try {
+        console.log('[Gleego] Processing...');
+        const nome = findField(data, ['nome', 'name', 'nome completo', 'full name', 'first_name']) || '';
+        const telefone = findField(data, ['telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile']) || '';
+        const email = findField(data, ['email', 'e-mail', 'mail']) || '';
+        const empresa = findField(data, ['empresa', 'company', 'company_name', 'razao_social']) || '';
+        const cidade = findField(data, ['cidade', 'city', 'municipio']) || '';
+        const estado = findField(data, ['estado', 'state', 'uf']) || '';
+        const valor = findField(data, ['valor', 'value', 'amount', 'price', 'preco']);
+
+        const gleegoPayload = {
+          name: String(nome).trim(),
+          phone: String(telefone).trim().replace(/\D/g, ''),
+          email: String(email).trim(),
+          company: String(empresa).trim(),
+          city: String(cidade).trim(),
+          state: String(estado).trim(),
+          source: form.name || form.slug || 'Formulário',
+          description: `Lead via formulário: ${form.name || form.slug}`,
+        };
+
+        if (valor) gleegoPayload.value = Number(valor) || 0;
+
+        // Add custom fields from remaining data
+        const mappedKeys = ['nome', 'name', 'nome_completo', 'full_name', 'first_name', 'telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile', 'email', 'e_mail', 'mail', 'empresa', 'company', 'company_name', 'razao_social', 'cidade', 'city', 'municipio', 'estado', 'state', 'uf', 'valor', 'value', 'amount', 'price', 'preco'];
+        const customFields = {};
+        for (const [key, value] of Object.entries(data)) {
+          const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          if (mappedKeys.includes(normalizedKey) || key.startsWith('_')) continue;
+          customFields[normalizedKey] = String(value || '');
+        }
+        if (Object.keys(customFields).length > 0) {
+          gleegoPayload.custom_fields = customFields;
+        }
+
+        console.log('[Gleego] Payload:', JSON.stringify(gleegoPayload));
+
+        const gleegoUrl = `https://whats.gleego.com.br/api/lead-webhooks/receive/${settings.gleego_token}`;
+        const gleegoResponse = await fetch(gleegoUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gleegoPayload),
+        });
+
+        if (!gleegoResponse.ok) {
+          let errBody = {};
+          try {
+            const rawText = await gleegoResponse.text();
+            try { errBody = JSON.parse(rawText); } catch { errBody = { raw_response: rawText }; }
+          } catch { errBody = { message: 'Could not read response' }; }
+          
+          errBody.http_status = gleegoResponse.status;
+          const errorMsg = errBody.error || errBody.message || `HTTP ${gleegoResponse.status}`;
+          console.error('[Gleego] API Error:', gleegoResponse.status, JSON.stringify(errBody));
+          await logIntegration(pool, form.id, lead.id, 'gleego', 'error', gleegoPayload, errBody, errorMsg);
+        } else {
+          let resBody = {};
+          try {
+            const text = await gleegoResponse.text();
+            try { resBody = JSON.parse(text); } catch { resBody = { message: text }; }
+          } catch { resBody = { message: 'Empty response' }; }
+          
+          console.log('[Gleego] Sent successfully:', JSON.stringify(resBody));
+          await logIntegration(pool, form.id, lead.id, 'gleego', 'success', gleegoPayload, resBody);
+        }
+      } catch (error) {
+        console.error('[Gleego] Error:', error.message);
+        await logIntegration(pool, form.id, lead.id, 'gleego', 'error', {}, null, error.message);
+      }
+    })());
+  } else if (settings.gleego_enabled && !settings.gleego_token) {
+    console.warn('[Gleego] Skipped: Token not configured');
+    await logIntegration(pool, form.id, lead.id, 'gleego', 'error', {}, null, 'Token do Gleego não configurado. Gere um token em whats.gleego.com.br → API → Tokens.');
   }
 
   // Execute all integrations in parallel (background)
