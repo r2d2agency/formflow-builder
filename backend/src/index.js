@@ -19,6 +19,7 @@ const linksRoutes = require('./routes/links');
 const diagnosticsRoutes = require('./routes/diagnostics');
 const logsRoutes = require('./routes/logs');
 const remarketingRoutes = require('./routes/remarketing');
+const apiV1Routes = require('./routes/api-v1');
 const { startScheduler } = require('./scheduler/remarketing');
 
 const app = express();
@@ -299,6 +300,7 @@ app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/remarketing', remarketingRoutes);
 app.use('/l', linksRoutes); // Public redirect route
+app.use('/api/v1', apiV1Routes); // Public REST API v1
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

@@ -136,6 +136,9 @@ export interface FormSettings {
   utm_term?: string;
   utm_content?: string;
   utm_passthrough?: boolean; // Pass UTMs from entry URL to redirect
+  // API Pública
+  api_enabled?: boolean;
+  api_key?: string;
   // Quiz Settings
   is_quiz_mode?: boolean;
   max_attempts_per_user?: number;

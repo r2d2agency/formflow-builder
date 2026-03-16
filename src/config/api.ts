@@ -58,6 +58,9 @@ export const API_CONFIG = {
 
     // Integration Logs
     INTEGRATION_LOGS: '/logs/integrations',
+
+    // API Key management
+    FORM_GENERATE_API_KEY: (id: string) => `/forms/${id}/generate-api-key`,
   },
 };
 

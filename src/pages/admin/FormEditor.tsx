@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useForm, useUpdateForm } from '@/hooks/useForms';
+import apiService from '@/services/api';
+import { API_CONFIG } from '@/config/api';
 import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
 import {
   ArrowLeft,
@@ -46,6 +48,9 @@ import {
   Code,
   Copy,
   Check,
+  Key,
+  RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
@@ -251,6 +256,10 @@ const FormEditor: React.FC = () => {
             <TabsTrigger value="tracking" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Rastreamento
+            </TabsTrigger>
+            <TabsTrigger value="api" className="gap-2">
+              <Globe className="h-4 w-4" />
+              API
             </TabsTrigger>
             <TabsTrigger value="embed" className="gap-2">
               <Code className="h-4 w-4" />
@@ -936,7 +945,7 @@ const FormEditor: React.FC = () => {
                   <div>
                     <p className="font-medium">Integração RD Station</p>
                     <p className="text-sm text-muted-foreground">
-                      Enviar leads para o RD Station via API de Conversões
+                      Enviar leads para o RD Station via API de Eventos
                     </p>
                   </div>
                   <Switch
@@ -947,7 +956,7 @@ const FormEditor: React.FC = () => {
                 {localForm.settings?.rdstation_enabled && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="rdstation_private_token">Token Privado (recomendado)</Label>
+                      <Label htmlFor="rdstation_private_token">Token Privado (obrigatório)</Label>
                       <Input
                         id="rdstation_private_token"
                         type="password"
@@ -956,21 +965,13 @@ const FormEditor: React.FC = () => {
                         placeholder="seu-token-privado-rdstation"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Token privado gerado em RD Station → Conta → Integrações → Tokens. Usado com autenticação Bearer.
+                        Token privado gerado em RD Station → Conta → Integrações → Tokens. A API de eventos exige obrigatoriamente autenticação Bearer via Token Privado.
                       </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rdstation_api_token">Token Público (alternativo)</Label>
-                      <Input
-                        id="rdstation_api_token"
-                        type="password"
-                        value={localForm.settings?.rdstation_api_token || ''}
-                        onChange={(e) => handleSettingsChange('rdstation_api_token', e.target.value)}
-                        placeholder="seu-token-publico-rdstation"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Token público. Usado apenas se o token privado não estiver preenchido.
-                      </p>
+                      {!localForm.settings?.rdstation_private_token && (
+                        <p className="text-xs text-destructive font-medium">
+                          ⚠️ Sem o Token Privado a integração não funcionará. O Token Público não é suportado.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="rdstation_conversion_identifier">Identificador de Conversão</Label>
@@ -1139,6 +1140,15 @@ const FormEditor: React.FC = () => {
             </Card>
           </TabsContent>
 
+          {/* API Tab */}
+          <TabsContent value="api" className="space-y-4">
+            <ApiSection
+              localForm={localForm}
+              handleSettingsChange={handleSettingsChange}
+              formId={id || ''}
+            />
+          </TabsContent>
+
           {/* Embed Tab */}
           <TabsContent value="embed" className="space-y-4">
             <EmbedSection slug={localForm.slug || ''} />
@@ -1146,6 +1156,167 @@ const FormEditor: React.FC = () => {
         </Tabs>
       </div>
     </AdminLayout>
+  );
+};
+
+// API Section Component
+const ApiSection: React.FC<{
+  localForm: Partial<Form>;
+  handleSettingsChange: <K extends keyof FormSettings>(key: K, value: FormSettings[K]) => void;
+  formId: string;
+}> = ({ localForm, handleSettingsChange, formId }) => {
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const apiBaseUrl = API_CONFIG.BASE_URL.replace(/\/api$/, '');
+  const submitEndpoint = `${apiBaseUrl}/api/v1/forms/${localForm.slug}/leads`;
+
+  const generateApiKey = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await apiService.post(
+        API_CONFIG.ENDPOINTS.FORM_GENERATE_API_KEY(formId),
+        {}
+      );
+      if (response.success && response.data) {
+        handleSettingsChange('api_key', (response.data as any).api_key);
+        toast({ title: 'API Key gerada', description: 'Nova chave de API gerada com sucesso.' });
+      }
+    } catch {
+      // Generate client-side fallback
+      const key = 'fb_' + crypto.randomUUID().replace(/-/g, '');
+      handleSettingsChange('api_key', key);
+      toast({ title: 'API Key gerada', description: 'Salve o formulário para ativar a chave.' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (localForm.settings?.api_key) {
+      await navigator.clipboard.writeText(localForm.settings.api_key);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
+  };
+
+  const curlExample = `curl -X POST "${submitEndpoint}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: ${localForm.settings?.api_key || 'SUA_API_KEY'}" \\
+  -d '{
+    "data": {
+      "nome": "João Silva",
+      "email": "joao@email.com",
+      "telefone": "11999998888"
+    }
+  }'`;
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            API Pública
+          </CardTitle>
+          <CardDescription>
+            Permita que sistemas externos enviem leads diretamente via API REST
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Ativar API</p>
+              <p className="text-sm text-muted-foreground">
+                Aceitar submissões de leads via POST HTTP
+              </p>
+            </div>
+            <Switch
+              checked={localForm.settings?.api_enabled}
+              onCheckedChange={(v) => handleSettingsChange('api_enabled', v)}
+            />
+          </div>
+
+          {localForm.settings?.api_enabled && (
+            <>
+              <div className="space-y-2">
+                <Label>Endpoint</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={submitEndpoint}
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(submitEndpoint);
+                      toast({ title: 'URL copiada!' });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  API Key (opcional - para autenticação)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    type="password"
+                    value={localForm.settings?.api_key || ''}
+                    placeholder="Nenhuma chave gerada"
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyKey}
+                    disabled={!localForm.settings?.api_key}
+                  >
+                    {copiedKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={generateApiKey}
+                    disabled={isGenerating}
+                  >
+                    <RefreshCw className={"h-4 w-4" + (isGenerating ? " animate-spin" : "")} />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se definida, o header <code className="bg-muted px-1 rounded">X-API-Key</code> será obrigatório. Sem chave, o endpoint aceita requisições sem autenticação.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Exemplo cURL</Label>
+                <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                  {curlExample}
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(curlExample);
+                    toast({ title: 'Exemplo copiado!' });
+                  }}
+                >
+                  <Copy className="mr-2 h-3 w-3" />
+                  Copiar exemplo
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 };
 
