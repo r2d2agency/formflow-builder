@@ -919,7 +919,7 @@ router.post('/forms/:slug/submit', async (req, res) => {
 
     // Execute integrations asynchronously (Fire and Forget)
     const reqOrigin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
-    processIntegrations(form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking).catch(err => {
+    processIntegrations(form, lead, data, ipAddress, userAgent, reqOrigin, pool, tracking, source).catch(err => {
       console.error('Error processing integrations:', err);
     });
 
