@@ -39,6 +39,15 @@ export interface ChangePasswordPayload {
 // Form Types
 export type FormType = 'typeform' | 'chat' | 'standard' | 'link_bio';
 
+// Gleego Routing Rule
+export interface GleegoRoutingRule {
+  id: string;
+  name: string;
+  sources: string; // comma-separated: "google,facebook"
+  token: string;
+  enabled: boolean;
+}
+
 export interface OptionWithImage {
   value: string;
   label: string;
