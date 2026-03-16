@@ -2012,8 +2012,8 @@ const PublicForm: React.FC = () => {
       const thankYouParams = new URLSearchParams();
       
       // Pass through UTMs from entry URL
-      const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
-      for (const key of utmKeys) {
+      const utmKeysRedirect = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+      for (const key of utmKeysRedirect) {
         const val = searchParams.get(key);
         if (val) thankYouParams.set(key, val);
       }
