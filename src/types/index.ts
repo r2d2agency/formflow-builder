@@ -142,6 +142,7 @@ export interface FormSettings {
   // Gleego CRM
   gleego_enabled?: boolean;
   gleego_token?: string;
+  gleego_routing_rules?: GleegoRoutingRule[];
   // Quiz Settings
   is_quiz_mode?: boolean;
   max_attempts_per_user?: number;
