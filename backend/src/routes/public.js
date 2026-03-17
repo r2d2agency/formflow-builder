@@ -689,9 +689,24 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
       integrations.push((async () => {
         try {
           console.log('[Gleego] Processing...');
-          const nome = findField(data, ['nome', 'name', 'nome completo', 'full name', 'first_name']) || '';
-          const telefone = findField(data, ['telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile']) || '';
-          const email = findField(data, ['email', 'e-mail', 'mail']) || '';
+          
+          // Helper: find value by form field type (uses form.fields definition)
+          const findByFieldType = (targetTypes) => {
+            const formFields = form.fields || [];
+            for (const field of formFields) {
+              if (targetTypes.includes(field.type)) {
+                // Try to find the value in data by field label or id
+                const val = data[field.label] || data[field.id];
+                if (val) return val;
+              }
+            }
+            return null;
+          };
+
+          // Priority: 1) match by field type from form definition, 2) fallback to key name matching
+          const nome = findByFieldType(['text']) || findField(data, ['nome', 'name', 'nome_completo', 'full_name', 'first_name', 'primeiro_nome']) || '';
+          const telefone = findByFieldType(['phone', 'whatsapp']) || findField(data, ['telefone', 'phone', 'tel', 'celular', 'whatsapp', 'mobile']) || '';
+          const email = findByFieldType(['email']) || findField(data, ['email', 'e-mail', 'mail']) || '';
           const empresa = findField(data, ['empresa', 'company', 'company_name', 'razao_social']) || '';
           const cidade = findField(data, ['cidade', 'city', 'municipio']) || '';
           const estado = findField(data, ['estado', 'state', 'uf']) || '';
