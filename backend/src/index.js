@@ -20,6 +20,7 @@ const diagnosticsRoutes = require('./routes/diagnostics');
 const logsRoutes = require('./routes/logs');
 const remarketingRoutes = require('./routes/remarketing');
 const apiV1Routes = require('./routes/api-v1');
+const whatsappTemplatesRoutes = require('./routes/whatsapp-templates');
 const { startScheduler } = require('./scheduler/remarketing');
 
 const app = express();
@@ -204,6 +205,24 @@ const runMigrations = async () => {
       console.warn('[startup] Failed to create remarketing tables:', e.message);
     }
 
+    // 6. Create whatsapp_templates table
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS whatsapp_templates (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          category VARCHAR(100),
+          message JSONB NOT NULL DEFAULT '{}',
+          created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `);
+      console.log('[startup] Checked/Created whatsapp_templates table');
+    } catch (e) {
+      console.warn('[startup] Failed to create whatsapp_templates table:', e.message);
+    }
+
     console.log('[startup] Migrations checked');
 
     // Seed default admin user if no users exist
@@ -299,6 +318,7 @@ app.use('/api/links', linksRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/remarketing', remarketingRoutes);
+app.use('/api/whatsapp-templates', whatsappTemplatesRoutes);
 app.use('/l', linksRoutes); // Public redirect route
 app.use('/api/v1', apiV1Routes); // Public REST API v1
 

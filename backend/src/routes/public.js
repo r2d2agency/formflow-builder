@@ -187,8 +187,33 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                
                // Prepare items to send (support both simple string and structured message)
                let itemsToSend = [];
-               // Use whatsapp_message for the lead (as per user request swap)
-               let rawMessage = settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               let rawMessage = null;
+
+               // 1. Check if template IDs are configured (pick random)
+               const templateIds = settings.whatsapp_template_ids;
+               if (Array.isArray(templateIds) && templateIds.length > 0) {
+                   const randomId = templateIds[Math.floor(Math.random() * templateIds.length)];
+                   console.log(`[WhatsApp] Using saved template ${randomId} (from ${templateIds.length} options)`);
+                   try {
+                       const tplResult = await pool.query('SELECT message FROM whatsapp_templates WHERE id = $1', [randomId]);
+                       if (tplResult.rows.length > 0) {
+                           let tplMsg = tplResult.rows[0].message;
+                           if (typeof tplMsg === 'string') tplMsg = JSON.parse(tplMsg);
+                           if (tplMsg && Array.isArray(tplMsg.items)) {
+                               rawMessage = tplMsg;
+                           }
+                       } else {
+                           console.warn(`[WhatsApp] Template ${randomId} not found in DB, falling back`);
+                       }
+                   } catch (tplErr) {
+                       console.error('[WhatsApp] Error loading template:', tplErr.message);
+                   }
+               }
+
+               // 2. Fallback to inline whatsapp_message
+               if (!rawMessage) {
+                   rawMessage = settings.whatsapp_message || 'Olá! Recebemos seus dados. Entraremos em contato em breve.';
+               }
                
                // Parse JSON string if needed
                if (typeof rawMessage === 'string') {
