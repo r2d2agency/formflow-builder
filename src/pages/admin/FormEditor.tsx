@@ -57,6 +57,7 @@ import { toast } from '@/hooks/use-toast';
 import type { Form, FormField, FormSettings, GleegoRoutingRule } from '@/types';
 import LogoUploader from '@/components/forms/LogoUploader';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
+import WhatsAppTemplateSelector from '@/components/forms/WhatsAppTemplateSelector';
 import SortableFieldEditor from '@/components/forms/SortableFieldEditor';
 import { Slider } from '@/components/ui/slider';
 
