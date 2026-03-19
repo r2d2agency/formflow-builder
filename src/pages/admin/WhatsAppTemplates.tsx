@@ -355,7 +355,7 @@ const WhatsAppTemplates: React.FC = () => {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={createTemplate.isPending || updateTemplate.isPending}
+                disabled={templatesEndpointUnavailable || createTemplate.isPending || updateTemplate.isPending}
               >
                 {createTemplate.isPending || updateTemplate.isPending ? 'Salvando...' : 'Salvar'}
               </Button>

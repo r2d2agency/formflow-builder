@@ -65,6 +65,13 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
         )}
       </div>
 
+      {templatesEndpointUnavailable && (
+        <Alert>
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{templatesEndpointMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Category filter */}
       {categories.length > 0 && (
         <div className="flex items-center gap-2">
@@ -88,8 +95,15 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
       ) : templates.length === 0 ? (
         <div className="text-center py-6 border rounded-lg border-dashed">
           <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhuma mensagem salva</p>
-          <Button variant="link" size="sm" onClick={() => window.open('/admin/whatsapp-templates', '_blank')}>
+          <p className="text-sm text-muted-foreground">
+            {templatesEndpointUnavailable ? 'Mensagens salvas indisponíveis neste backend' : 'Nenhuma mensagem salva'}
+          </p>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => window.open('/admin/whatsapp-templates', '_blank')}
+            disabled={templatesEndpointUnavailable}
+          >
             Criar mensagens
           </Button>
         </div>
