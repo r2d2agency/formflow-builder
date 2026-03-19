@@ -27,6 +27,7 @@ import LinksList from "./pages/admin/LinksList";
 import LinkStats from "./pages/admin/LinkStats";
 import IntegrationLogsPage from "./pages/admin/IntegrationLogsPage";
 import RemarketingList from "./pages/admin/RemarketingList";
+import WhatsAppTemplates from "./pages/admin/WhatsAppTemplates";
 
 const queryClient = new QueryClient();
 
