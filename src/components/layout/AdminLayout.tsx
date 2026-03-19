@@ -20,6 +20,7 @@ import {
   Link2,
   Activity,
   Timer,
+  Mail,
 } from 'lucide-react';
 import {
   DropdownMenu,
