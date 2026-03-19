@@ -161,7 +161,7 @@ const App = () => (
             <Route
               path="/admin/whatsapp-templates"
               element={
-                <ProtectedRoute adminOnly>
+                <ProtectedRoute>
                   <WhatsAppTemplates />
                 </ProtectedRoute>
               }
