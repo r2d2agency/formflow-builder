@@ -35,6 +35,8 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
     filterCategory && filterCategory !== 'all' ? filterCategory : undefined
   );
   const { data: categories = [] } = useWhatsAppTemplateCategories();
+  const templatesEndpointUnavailable = isWhatsAppTemplatesEndpointUnavailable();
+  const templatesEndpointMessage = getWhatsAppTemplatesEndpointUnavailableMessage();
 
   const toggleTemplate = (id: string) => {
     if (selectedIds.includes(id)) {
