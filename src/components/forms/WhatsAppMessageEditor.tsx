@@ -331,6 +331,17 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
                           </Button>
                         ))}
                       </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Switch
+                          id={`typing-${item.id}`}
+                          checked={item.simulate_typing || false}
+                          onCheckedChange={(checked) => updateItem(item.id, { simulate_typing: checked })}
+                        />
+                        <Label htmlFor={`typing-${item.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                          <KeyboardIcon className="h-3 w-3" />
+                          Simular digitando...
+                        </Label>
+                      </div>
                     </div>
                   )}
 
