@@ -481,7 +481,8 @@ router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
         apiResponse = await service.sendText(cleanPhone, message);
       } else if (type === 'audio') {
         if (!media_url) throw new Error('URL do áudio obrigatória');
-        apiResponse = await service.sendAudio(cleanPhone, media_url);
+        const audioContent = getMediaContent(media_url, 'audio/mp3');
+        apiResponse = await service.sendAudio(cleanPhone, audioContent);
       } else {
         // image, video, document
         if (!media_url) throw new Error('URL da mídia obrigatória');
