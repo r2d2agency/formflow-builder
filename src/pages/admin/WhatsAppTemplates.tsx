@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -30,11 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, MessageSquare, FolderOpen, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, MessageSquare, FolderOpen, Tag, TriangleAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
 import type { WhatsAppMessage } from '@/types';
 import {
+  getWhatsAppTemplatesEndpointUnavailableMessage,
+  isWhatsAppTemplatesEndpointUnavailable,
   useWhatsAppTemplates,
   useWhatsAppTemplateCategories,
   useCreateWhatsAppTemplate,
@@ -56,8 +59,19 @@ const WhatsAppTemplates: React.FC = () => {
   const createTemplate = useCreateWhatsAppTemplate();
   const updateTemplate = useUpdateWhatsAppTemplate();
   const deleteTemplate = useDeleteWhatsAppTemplate();
+  const templatesEndpointUnavailable = isWhatsAppTemplatesEndpointUnavailable();
+  const templatesEndpointMessage = getWhatsAppTemplatesEndpointUnavailableMessage();
 
   const openCreate = () => {
+    if (isWhatsAppTemplatesEndpointUnavailable()) {
+      toast({
+        title: 'Backend sem suporte a mensagens salvas',
+        description: templatesEndpointMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setEditingId(null);
     setFormName('');
     setFormCategory('');
@@ -77,6 +91,15 @@ const WhatsAppTemplates: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (isWhatsAppTemplatesEndpointUnavailable()) {
+      toast({
+        title: 'Backend sem suporte a mensagens salvas',
+        description: templatesEndpointMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formName.trim()) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
@@ -129,11 +152,21 @@ const WhatsAppTemplates: React.FC = () => {
               Crie e gerencie templates de mensagens WhatsApp reutilizáveis
             </p>
           </div>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} disabled={templatesEndpointUnavailable}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Mensagem
           </Button>
         </div>
+
+        {templatesEndpointUnavailable && (
+          <Alert>
+            <TriangleAlert className="h-4 w-4" />
+            <AlertTitle>Rota de mensagens salvas indisponível</AlertTitle>
+            <AlertDescription>
+              {templatesEndpointMessage}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Category Filter */}
         {categories.length > 0 && (
@@ -164,8 +197,10 @@ const WhatsAppTemplates: React.FC = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nenhuma mensagem salva</p>
-              <Button variant="link" onClick={openCreate}>
+              <p className="text-muted-foreground">
+                {templatesEndpointUnavailable ? 'Mensagens salvas indisponíveis neste backend' : 'Nenhuma mensagem salva'}
+              </p>
+              <Button variant="link" onClick={openCreate} disabled={templatesEndpointUnavailable}>
                 Criar primeira mensagem
               </Button>
             </CardContent>
@@ -320,7 +355,7 @@ const WhatsAppTemplates: React.FC = () => {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={createTemplate.isPending || updateTemplate.isPending}
+                disabled={templatesEndpointUnavailable || createTemplate.isPending || updateTemplate.isPending}
               >
                 {createTemplate.isPending || updateTemplate.isPending ? 'Salvando...' : 'Salvar'}
               </Button>

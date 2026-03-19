@@ -13,14 +13,47 @@ export interface WhatsAppTemplate {
 
 let templatesEndpointUnavailable = false;
 
+const TEMPLATES_ENDPOINT_UNAVAILABLE_MESSAGE =
+  'Mensagens salvas indisponíveis: o backend publicado ainda não possui a rota /api/whatsapp-templates. Atualize e republique o backend.';
+
 const isMissingTemplatesEndpoint = (error: unknown) => {
   if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
-  return message.includes('404') || message.includes('not found') || message.includes('html');
+  return (
+    message.includes('404') ||
+    message.includes('not found') ||
+    message.includes('cannot get /api/whatsapp-templates') ||
+    message.includes('html')
+  );
 };
 
 const markTemplatesEndpointUnavailable = () => {
   templatesEndpointUnavailable = true;
+};
+
+export const isWhatsAppTemplatesEndpointUnavailable = () => templatesEndpointUnavailable;
+
+export const getWhatsAppTemplatesEndpointUnavailableMessage = () =>
+  TEMPLATES_ENDPOINT_UNAVAILABLE_MESSAGE;
+
+const handleTemplatesQueryError = (error: unknown) => {
+  if (isMissingTemplatesEndpoint(error)) {
+    markTemplatesEndpointUnavailable();
+    return [];
+  }
+
+  throw error instanceof Error ? error : new Error('Erro ao carregar mensagens salvas');
+};
+
+const handleTemplatesMutationError = (errorMessage: string) => {
+  const error = new Error(errorMessage);
+
+  if (isMissingTemplatesEndpoint(error)) {
+    markTemplatesEndpointUnavailable();
+    throw new Error(TEMPLATES_ENDPOINT_UNAVAILABLE_MESSAGE);
+  }
+
+  throw error;
 };
 
 const getTemplatesQueryOptions = () => ({
@@ -43,11 +76,7 @@ export const useWhatsAppTemplates = (category?: string) => {
         : '/whatsapp-templates';
       const res = await apiService.get<WhatsAppTemplate[]>(endpoint);
       if (!res.success) {
-        if (isMissingTemplatesEndpoint(new Error(res.error))) {
-          markTemplatesEndpointUnavailable();
-          return [];
-        }
-        throw new Error(res.error);
+        return handleTemplatesQueryError(new Error(res.error));
       }
       return res.data || [];
     },
@@ -61,11 +90,7 @@ export const useWhatsAppTemplateCategories = () => {
     queryFn: async () => {
       const res = await apiService.get<string[]>('/whatsapp-templates/categories');
       if (!res.success) {
-        if (isMissingTemplatesEndpoint(new Error(res.error))) {
-          markTemplatesEndpointUnavailable();
-          return [];
-        }
-        throw new Error(res.error);
+        return handleTemplatesQueryError(new Error(res.error));
       }
       return res.data || [];
     },
@@ -77,7 +102,7 @@ export const useCreateWhatsAppTemplate = () => {
   return useMutation({
     mutationFn: async (data: { name: string; category?: string; message: any }) => {
       const res = await apiService.post<WhatsAppTemplate>('/whatsapp-templates', data);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) handleTemplatesMutationError(res.error);
       return res.data;
     },
     onSuccess: () => {
@@ -92,7 +117,7 @@ export const useUpdateWhatsAppTemplate = () => {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string; name: string; category?: string; message: any }) => {
       const res = await apiService.put<WhatsAppTemplate>(`/whatsapp-templates/${id}`, data);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) handleTemplatesMutationError(res.error);
       return res.data;
     },
     onSuccess: () => {
@@ -107,7 +132,7 @@ export const useDeleteWhatsAppTemplate = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await apiService.delete(`/whatsapp-templates/${id}`);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) handleTemplatesMutationError(res.error);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });

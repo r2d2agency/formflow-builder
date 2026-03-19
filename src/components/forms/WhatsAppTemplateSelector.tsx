@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -11,8 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Shuffle, Tag } from 'lucide-react';
+import { MessageSquare, Shuffle, Tag, TriangleAlert } from 'lucide-react';
 import {
+  getWhatsAppTemplatesEndpointUnavailableMessage,
+  isWhatsAppTemplatesEndpointUnavailable,
   useWhatsAppTemplates,
   useWhatsAppTemplateCategories,
   type WhatsAppTemplate,
@@ -32,6 +35,8 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
     filterCategory && filterCategory !== 'all' ? filterCategory : undefined
   );
   const { data: categories = [] } = useWhatsAppTemplateCategories();
+  const templatesEndpointUnavailable = isWhatsAppTemplatesEndpointUnavailable();
+  const templatesEndpointMessage = getWhatsAppTemplatesEndpointUnavailableMessage();
 
   const toggleTemplate = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -60,6 +65,13 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
         )}
       </div>
 
+      {templatesEndpointUnavailable && (
+        <Alert>
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{templatesEndpointMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Category filter */}
       {categories.length > 0 && (
         <div className="flex items-center gap-2">
@@ -83,8 +95,15 @@ const WhatsAppTemplateSelector: React.FC<WhatsAppTemplateSelectorProps> = ({
       ) : templates.length === 0 ? (
         <div className="text-center py-6 border rounded-lg border-dashed">
           <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhuma mensagem salva</p>
-          <Button variant="link" size="sm" onClick={() => window.open('/admin/whatsapp-templates', '_blank')}>
+          <p className="text-sm text-muted-foreground">
+            {templatesEndpointUnavailable ? 'Mensagens salvas indisponíveis neste backend' : 'Nenhuma mensagem salva'}
+          </p>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => window.open('/admin/whatsapp-templates', '_blank')}
+            disabled={templatesEndpointUnavailable}
+          >
             Criar mensagens
           </Button>
         </div>
