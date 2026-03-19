@@ -212,6 +212,26 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
             asChild
           >
             <span>
+              <Upload className="mr-2 h-4 w-4" />
+              Enviar Áudio
+            </span>
+          </Button>
+          <input
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={handleAudioUpload}
+          />
+        </label>
+        <label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isUploading}
+            asChild
+          >
+            <span>
               <Video className="mr-2 h-4 w-4" />
               Vídeo
             </span>
