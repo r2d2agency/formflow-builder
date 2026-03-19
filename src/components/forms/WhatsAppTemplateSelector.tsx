@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -11,8 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Shuffle, Tag } from 'lucide-react';
+import { MessageSquare, Shuffle, Tag, TriangleAlert } from 'lucide-react';
 import {
+  getWhatsAppTemplatesEndpointUnavailableMessage,
+  isWhatsAppTemplatesEndpointUnavailable,
   useWhatsAppTemplates,
   useWhatsAppTemplateCategories,
   type WhatsAppTemplate,

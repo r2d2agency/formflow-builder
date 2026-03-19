@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -30,11 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, MessageSquare, FolderOpen, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, MessageSquare, FolderOpen, Tag, TriangleAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import WhatsAppMessageEditor from '@/components/forms/WhatsAppMessageEditor';
 import type { WhatsAppMessage } from '@/types';
 import {
+  getWhatsAppTemplatesEndpointUnavailableMessage,
+  isWhatsAppTemplatesEndpointUnavailable,
   useWhatsAppTemplates,
   useWhatsAppTemplateCategories,
   useCreateWhatsAppTemplate,
@@ -56,6 +59,8 @@ const WhatsAppTemplates: React.FC = () => {
   const createTemplate = useCreateWhatsAppTemplate();
   const updateTemplate = useUpdateWhatsAppTemplate();
   const deleteTemplate = useDeleteWhatsAppTemplate();
+  const templatesEndpointUnavailable = isWhatsAppTemplatesEndpointUnavailable();
+  const templatesEndpointMessage = getWhatsAppTemplatesEndpointUnavailableMessage();
 
   const openCreate = () => {
     setEditingId(null);
