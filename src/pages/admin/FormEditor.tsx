@@ -816,9 +816,16 @@ const FormEditor: React.FC = () => {
                     </div>
 
                     <div className="border-t pt-4">
-                      <Label className="mb-2 block">Mensagem para o Cliente (Lead)</Label>
+                      <WhatsAppTemplateSelector
+                        selectedIds={localForm.settings?.whatsapp_template_ids || []}
+                        onChange={(ids) => handleSettingsChange('whatsapp_template_ids', ids)}
+                      />
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <Label className="mb-2 block">Mensagem Personalizada (opcional)</Label>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Esta mensagem será enviada automaticamente para o lead após o preenchimento.
+                        Se nenhuma mensagem salva for selecionada acima, esta mensagem será usada.
                       </p>
                       <WhatsAppMessageEditor
                         value={localForm.settings?.whatsapp_message}

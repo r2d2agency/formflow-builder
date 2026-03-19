@@ -158,6 +158,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/whatsapp-templates"
+              element={
+                <ProtectedRoute>
+                  <WhatsAppTemplates />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

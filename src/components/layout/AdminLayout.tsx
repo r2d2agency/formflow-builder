@@ -39,6 +39,7 @@ const navigation = [
   { name: 'Formulários', href: '/admin/forms', icon: FileText },
   { name: 'Leads', href: '/admin/leads', icon: Users },
   { name: 'Remarketing', href: '/admin/remarketing', icon: Timer },
+  { name: 'Mensagens WA', href: '/admin/whatsapp-templates', icon: Mail },
   { name: 'Links', href: '/admin/links', icon: Link2, adminOnly: true },
   { name: 'Logs de Integração', href: '/admin/integrations-logs', icon: Activity, adminOnly: true },
   { name: 'Usuários', href: '/admin/users', icon: UserCog, adminOnly: true },
