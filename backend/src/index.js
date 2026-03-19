@@ -300,6 +300,7 @@ app.use('/api/links', linksRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/remarketing', remarketingRoutes);
+app.use('/api/whatsapp-templates', whatsappTemplatesRoutes);
 app.use('/l', linksRoutes); // Public redirect route
 app.use('/api/v1', apiV1Routes); // Public REST API v1
 
