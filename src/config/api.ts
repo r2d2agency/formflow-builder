@@ -3,7 +3,7 @@
 // Set VITE_API_URL in environment variables
 // Example: https://formbuilder-api.easypanel.host/api
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'https://teste-formflow-backend.exf0ty.easypanel.host/api',
+  BASE_URL: (import.meta.env.VITE_API_URL || 'https://teste-formflow-backend.exf0ty.easypanel.host/api').replace(/\/+$/, ''),
   
   // Endpoints
   ENDPOINTS: {
@@ -61,6 +61,11 @@ export const API_CONFIG = {
 
     // API Key management
     FORM_GENERATE_API_KEY: (id: string) => `/forms/${id}/generate-api-key`,
+
+    // WhatsApp Templates
+    WHATSAPP_TEMPLATES: '/whatsapp-templates',
+    WHATSAPP_TEMPLATE_BY_ID: (id: string) => `/whatsapp-templates/${id}`,
+    WHATSAPP_TEMPLATE_CATEGORIES: '/whatsapp-templates/categories',
   },
 };
 
