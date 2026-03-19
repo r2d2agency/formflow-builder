@@ -11,23 +11,42 @@ export interface WhatsAppTemplate {
   updated_at: string;
 }
 
+let templatesEndpointUnavailable = false;
+
 const isMissingTemplatesEndpoint = (error: unknown) => {
   if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
   return message.includes('404') || message.includes('not found') || message.includes('html');
 };
 
+const markTemplatesEndpointUnavailable = () => {
+  templatesEndpointUnavailable = true;
+};
+
+const getTemplatesQueryOptions = () => ({
+  enabled: !templatesEndpointUnavailable,
+  retry: false,
+  staleTime: 1000 * 60 * 60,
+  gcTime: 1000 * 60 * 60,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});
+
 export const useWhatsAppTemplates = (category?: string) => {
   return useQuery({
     queryKey: ['whatsapp-templates', category],
-    retry: false,
+    ...getTemplatesQueryOptions(),
     queryFn: async () => {
       const endpoint = category
         ? `/whatsapp-templates?category=${encodeURIComponent(category)}`
         : '/whatsapp-templates';
       const res = await apiService.get<WhatsAppTemplate[]>(endpoint);
       if (!res.success) {
-        if (isMissingTemplatesEndpoint(new Error(res.error))) return [];
+        if (isMissingTemplatesEndpoint(new Error(res.error))) {
+          markTemplatesEndpointUnavailable();
+          return [];
+        }
         throw new Error(res.error);
       }
       return res.data || [];
@@ -38,11 +57,14 @@ export const useWhatsAppTemplates = (category?: string) => {
 export const useWhatsAppTemplateCategories = () => {
   return useQuery({
     queryKey: ['whatsapp-template-categories'],
-    retry: false,
+    ...getTemplatesQueryOptions(),
     queryFn: async () => {
       const res = await apiService.get<string[]>('/whatsapp-templates/categories');
       if (!res.success) {
-        if (isMissingTemplatesEndpoint(new Error(res.error))) return [];
+        if (isMissingTemplatesEndpoint(new Error(res.error))) {
+          markTemplatesEndpointUnavailable();
+          return [];
+        }
         throw new Error(res.error);
       }
       return res.data || [];
