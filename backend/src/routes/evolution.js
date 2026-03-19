@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { getMediaContent } = require('../utils/mediaHelper');
 const router = express.Router();
 
 // Helper to normalize API URL
@@ -481,11 +482,13 @@ router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
         apiResponse = await service.sendText(cleanPhone, message);
       } else if (type === 'audio') {
         if (!media_url) throw new Error('URL do áudio obrigatória');
-        apiResponse = await service.sendAudio(cleanPhone, media_url);
+        const audioContent = getMediaContent(media_url, 'audio/mp3');
+        apiResponse = await service.sendAudio(cleanPhone, audioContent);
       } else {
         // image, video, document
         if (!media_url) throw new Error('URL da mídia obrigatória');
-        apiResponse = await service.sendMedia(cleanPhone, media_url, type === 'document' ? 'document' : type, message);
+        const mediaContent = getMediaContent(media_url, null);
+        apiResponse = await service.sendMedia(cleanPhone, mediaContent, type === 'document' ? 'document' : type, message);
       }
 
       res.json({ success: true, message: 'Enviado com sucesso', data: apiResponse });
