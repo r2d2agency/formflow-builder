@@ -115,8 +115,16 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (error) {
+    } catch (error: any) {
+      const errorName = error?.name;
+      const description = errorName === 'NotFoundError'
+        ? 'Nenhum microfone foi encontrado neste dispositivo. Use “Enviar Áudio” para subir um arquivo.'
+        : errorName === 'NotAllowedError'
+          ? 'Permissão do microfone negada. Libere o acesso no navegador ou use “Enviar Áudio”.'
+          : 'Não foi possível acessar o microfone. Você ainda pode usar “Enviar Áudio”.';
+
       console.error('Error accessing microphone:', error);
+      window.alert(description);
     }
   };
 
