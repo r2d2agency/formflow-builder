@@ -20,6 +20,7 @@ const diagnosticsRoutes = require('./routes/diagnostics');
 const logsRoutes = require('./routes/logs');
 const remarketingRoutes = require('./routes/remarketing');
 const apiV1Routes = require('./routes/api-v1');
+const whatsappTemplatesRoutes = require('./routes/whatsapp-templates');
 const { startScheduler } = require('./scheduler/remarketing');
 
 const app = express();
