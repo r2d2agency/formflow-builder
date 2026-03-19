@@ -1960,13 +1960,24 @@ const PublicForm: React.FC = () => {
         event_id: generateUUID(),
       };
 
-      // Capture UTMs from URL
+      // Capture UTMs and Meta Ads dynamic params from URL
       const utmData: Record<string, string> = {};
       const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
-      for (const key of utmKeys) {
+      const metaKeys = ['fbclid', 'fb_ad_id', 'fb_source', 'campaign_id', 'adset_id', 'ad_id', 'campaign_name', 'adset_name', 'ad_name', 'placement', 'site_source_name'];
+      
+      for (const key of [...utmKeys, ...metaKeys]) {
         const val = searchParams.get(key);
         if (val) utmData[key] = val;
       }
+      
+      // Capture any other utm_, fb_, hsa_ params dynamically
+      searchParams.forEach((val, key) => {
+        const keyLower = key.toLowerCase();
+        if ((keyLower.startsWith('utm_') || keyLower.startsWith('fb_') || keyLower.startsWith('hsa_')) && !utmData[key]) {
+          utmData[key] = val;
+        }
+      });
+      
       // Also include fixed UTMs from form settings as fallback
       if (displayForm?.settings) {
         const s = displayForm.settings;
