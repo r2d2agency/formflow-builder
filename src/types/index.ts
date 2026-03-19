@@ -145,6 +145,8 @@ export interface FormSettings {
   utm_term?: string;
   utm_content?: string;
   utm_passthrough?: boolean; // Pass UTMs from entry URL to redirect
+  // WhatsApp Templates
+  whatsapp_template_ids?: string[];
   // API Pública
   api_enabled?: boolean;
   api_key?: string;
