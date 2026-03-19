@@ -63,6 +63,15 @@ const WhatsAppTemplates: React.FC = () => {
   const templatesEndpointMessage = getWhatsAppTemplatesEndpointUnavailableMessage();
 
   const openCreate = () => {
+    if (isWhatsAppTemplatesEndpointUnavailable()) {
+      toast({
+        title: 'Backend sem suporte a mensagens salvas',
+        description: templatesEndpointMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setEditingId(null);
     setFormName('');
     setFormCategory('');
