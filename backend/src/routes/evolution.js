@@ -487,7 +487,8 @@ router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
       } else {
         // image, video, document
         if (!media_url) throw new Error('URL da mídia obrigatória');
-        apiResponse = await service.sendMedia(cleanPhone, media_url, type === 'document' ? 'document' : type, message);
+        const mediaContent = getMediaContent(media_url, null);
+        apiResponse = await service.sendMedia(cleanPhone, mediaContent, type === 'document' ? 'document' : type, message);
       }
 
       res.json({ success: true, message: 'Enviado com sucesso', data: apiResponse });
