@@ -2,8 +2,26 @@
 // Configure your Easypanel backend URL here
 // Set VITE_API_URL in environment variables
 // Example: https://formbuilder-api.easypanel.host/api
+const normalizeBaseUrl = (url: string): string => {
+  const trimmedUrl = url.trim();
+  const protocolMatch = trimmedUrl.match(/^[a-z]+:\/\//i);
+
+  if (!protocolMatch) {
+    return trimmedUrl.replace(/\/+/g, '/').replace(/\/+$/, '');
+  }
+
+  const protocol = protocolMatch[0];
+  const rest = trimmedUrl.slice(protocol.length);
+
+  return `${protocol}${rest.replace(/\/+/g, '/').replace(/\/+$/, '')}`;
+};
+
+const normalizeEndpoint = (endpoint: string): string => endpoint.replace(/^\/+/, '');
+
 export const API_CONFIG = {
-  BASE_URL: (import.meta.env.VITE_API_URL || 'https://teste-formflow-backend.exf0ty.easypanel.host/api').replace(/\/+$/, ''),
+  BASE_URL: normalizeBaseUrl(
+    import.meta.env.VITE_API_URL || 'https://teste-formflow-backend.exf0ty.easypanel.host/api'
+  ),
   
   // Endpoints
   ENDPOINTS: {
@@ -70,5 +88,5 @@ export const API_CONFIG = {
 };
 
 export const getApiUrl = (endpoint: string): string => {
-  return `${API_CONFIG.BASE_URL}${endpoint}`;
+  return `${API_CONFIG.BASE_URL}/${normalizeEndpoint(endpoint)}`;
 };
