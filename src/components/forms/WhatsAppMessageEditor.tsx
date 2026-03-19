@@ -128,6 +128,16 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
   };
 
   // File Uploads
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadAudio(file);
+    if (result) {
+      addItem('audio', result.url, result.original_filename, file.type);
+    }
+  };
+
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
