@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Mic,
   MicOff,
@@ -17,6 +18,7 @@ import {
   Pause,
   Upload,
   Type,
+  KeyboardIcon,
 } from 'lucide-react';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import type { WhatsAppMessage, WhatsAppMessageItem } from '@/types';
@@ -126,6 +128,16 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
   };
 
   // File Uploads
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadAudio(file);
+    if (result) {
+      addItem('audio', result.url, result.original_filename, file.type);
+    }
+  };
+
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -201,6 +213,26 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
             </>
           )}
         </Button>
+        <label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isUploading}
+            asChild
+          >
+            <span>
+              <Upload className="mr-2 h-4 w-4" />
+              Enviar Áudio
+            </span>
+          </Button>
+          <input
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={handleAudioUpload}
+          />
+        </label>
         <label>
           <Button
             type="button"
@@ -298,6 +330,17 @@ const WhatsAppMessageEditor: React.FC<WhatsAppMessageEditorProps> = ({
                             {`{{${v.key}}}`}
                           </Button>
                         ))}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Switch
+                          id={`typing-${item.id}`}
+                          checked={item.simulate_typing || false}
+                          onCheckedChange={(checked) => updateItem(item.id, { simulate_typing: checked })}
+                        />
+                        <Label htmlFor={`typing-${item.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                          <KeyboardIcon className="h-3 w-3" />
+                          Simular digitando...
+                        </Label>
                       </div>
                     </div>
                   )}

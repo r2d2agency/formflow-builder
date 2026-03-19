@@ -87,6 +87,7 @@ export interface WhatsAppMessageItem {
   content: string; // text content or file URL
   filename?: string; // original filename for documents
   mimeType?: string;
+  simulate_typing?: boolean; // show "typing..." before sending text
 }
 
 export interface WhatsAppMessage {
