@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { getMediaContent } = require('../utils/mediaHelper');
 const router = express.Router();
 
 // Helper to normalize API URL
