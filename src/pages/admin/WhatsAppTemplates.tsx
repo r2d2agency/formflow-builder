@@ -158,6 +158,16 @@ const WhatsAppTemplates: React.FC = () => {
           </Button>
         </div>
 
+        {templatesEndpointUnavailable && (
+          <Alert>
+            <TriangleAlert className="h-4 w-4" />
+            <AlertTitle>Rota de mensagens salvas indisponível</AlertTitle>
+            <AlertDescription>
+              {templatesEndpointMessage}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className="flex items-center gap-2">
@@ -187,8 +197,10 @@ const WhatsAppTemplates: React.FC = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nenhuma mensagem salva</p>
-              <Button variant="link" onClick={openCreate}>
+              <p className="text-muted-foreground">
+                {templatesEndpointUnavailable ? 'Mensagens salvas indisponíveis neste backend' : 'Nenhuma mensagem salva'}
+              </p>
+              <Button variant="link" onClick={openCreate} disabled={templatesEndpointUnavailable}>
                 Criar primeira mensagem
               </Button>
             </CardContent>
