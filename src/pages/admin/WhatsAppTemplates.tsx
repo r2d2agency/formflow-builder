@@ -91,6 +91,15 @@ const WhatsAppTemplates: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (isWhatsAppTemplatesEndpointUnavailable()) {
+      toast({
+        title: 'Backend sem suporte a mensagens salvas',
+        description: templatesEndpointMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formName.trim()) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
