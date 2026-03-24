@@ -443,7 +443,52 @@ const EvolutionInstances: React.FC = () => {
                 </div>
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{instance.display_name || instance.name}</CardTitle>
+                    {renamingId === instance.id ? (
+                      <div className="flex items-center gap-1 flex-1">
+                        <Input
+                          value={renamingValue}
+                          onChange={(e) => setRenamingValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              updateInstance.mutateAsync({
+                                id: instance.id,
+                                data: { display_name: renamingValue.trim() || null },
+                              }).then(() => setRenamingId(null));
+                            }
+                            if (e.key === 'Escape') setRenamingId(null);
+                          }}
+                          className="h-7 text-sm"
+                          autoFocus
+                          placeholder="Nome amigável..."
+                        />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          updateInstance.mutateAsync({
+                            id: instance.id,
+                            data: { display_name: renamingValue.trim() || null },
+                          }).then(() => setRenamingId(null));
+                        }}>
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRenamingId(null)}>
+                          <X className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="group flex items-center gap-1.5">
+                        <CardTitle className="text-lg">{instance.display_name || instance.name}</CardTitle>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setRenamingId(instance.id);
+                            setRenamingValue(instance.display_name || instance.name);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
                     {instance.is_active ? (
                       <Badge variant="default" className="bg-green-600 hover:bg-green-700">
                         Ativa
@@ -452,6 +497,11 @@ const EvolutionInstances: React.FC = () => {
                       <Badge variant="secondary">Inativa</Badge>
                     )}
                   </div>
+                  {instance.display_name && (
+                    <CardDescription className="text-xs text-muted-foreground">
+                      Instância: {instance.name}
+                    </CardDescription>
+                  )}
                   <CardDescription className="truncate font-mono text-xs">
                     {instance.api_url}
                   </CardDescription>
