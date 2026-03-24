@@ -31,7 +31,7 @@ export interface UpdateUserPayload {
   name: string;
   role: 'admin' | 'user';
   form_ids?: string[];
-  instance_ids?: string[];
+  instance_assignments?: { instance_id: string; display_name?: string }[];
 }
 
 export interface ChangePasswordPayload {
