@@ -22,7 +22,21 @@ router.get('/', async (req, res) => {
     if (isAdmin) {
       // Admin sees all forms
       countQuery = 'SELECT COUNT(*) FROM forms';
-      dataQuery = 'SELECT * FROM forms ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+      dataQuery = `
+        SELECT f.*,
+          COALESCE(stats.total_leads, 0) as submissions_count,
+          COALESCE(stats.complete_leads, 0) as complete_leads,
+          COALESCE(stats.partial_leads, 0) as partial_leads
+        FROM forms f
+        LEFT JOIN (
+          SELECT form_id,
+            COUNT(*) as total_leads,
+            COUNT(*) FILTER (WHERE is_partial = false OR is_partial IS NULL) as complete_leads,
+            COUNT(*) FILTER (WHERE is_partial = true) as partial_leads
+          FROM leads GROUP BY form_id
+        ) stats ON stats.form_id = f.id
+        ORDER BY f.created_at DESC LIMIT $1 OFFSET $2
+      `;
     } else {
       // Regular user only sees assigned forms
       countQuery = `
@@ -31,8 +45,19 @@ router.get('/', async (req, res) => {
         WHERE uf.user_id = $1
       `;
       dataQuery = `
-        SELECT f.* FROM forms f
+        SELECT f.*,
+          COALESCE(stats.total_leads, 0) as submissions_count,
+          COALESCE(stats.complete_leads, 0) as complete_leads,
+          COALESCE(stats.partial_leads, 0) as partial_leads
+        FROM forms f
         INNER JOIN user_forms uf ON f.id = uf.form_id
+        LEFT JOIN (
+          SELECT form_id,
+            COUNT(*) as total_leads,
+            COUNT(*) FILTER (WHERE is_partial = false OR is_partial IS NULL) as complete_leads,
+            COUNT(*) FILTER (WHERE is_partial = true) as partial_leads
+          FROM leads GROUP BY form_id
+        ) stats ON stats.form_id = f.id
         WHERE uf.user_id = $1
         ORDER BY f.created_at DESC
         LIMIT $2 OFFSET $3

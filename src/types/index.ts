@@ -180,6 +180,8 @@ export interface Form {
   created_at: string;
   updated_at: string;
   submissions_count?: number;
+  complete_leads?: number;
+  partial_leads?: number;
 }
 
 // Lead Types
