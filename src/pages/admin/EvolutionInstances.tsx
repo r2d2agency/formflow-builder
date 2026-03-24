@@ -89,6 +89,7 @@ import {
   useConnectEvolutionInstance,
   useDisconnectEvolutionInstance,
   useSendTestMessage,
+  useUpdateDisplayName,
 } from '@/hooks/useEvolutionInstances';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import type { EvolutionInstance } from '@/types';
