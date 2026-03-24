@@ -7,7 +7,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   assigned_forms?: { id: string; name: string; slug: string }[];
-  assigned_instances?: { id: string; name: string; api_url: string }[];
+  assigned_instances?: { id: string; name: string; api_url: string; display_name?: string }[];
 }
 
 export interface AuthState {
