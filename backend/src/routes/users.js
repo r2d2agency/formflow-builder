@@ -132,7 +132,7 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, name, role, form_ids, instance_ids } = req.body;
+    const { email, name, role, form_ids, instance_ids, instance_assignments } = req.body;
 
     const result = await pool.query(
       `UPDATE users SET email = $1, name = $2, role = $3
