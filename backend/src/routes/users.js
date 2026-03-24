@@ -107,12 +107,13 @@ router.post('/', adminOnly, async (req, res) => {
       }
     }
 
-    // Assign instances if provided
-    if (instance_ids && instance_ids.length > 0 && role !== 'admin') {
-      for (const instanceId of instance_ids) {
+    // Assign instances if provided (new format with display_name)
+    const assignments = instance_assignments || (instance_ids ? instance_ids.map(id => ({ instance_id: id })) : []);
+    if (assignments.length > 0 && role !== 'admin') {
+      for (const assignment of assignments) {
         await pool.query(
-          'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [newUser.id, instanceId]
+          'INSERT INTO user_instances (user_id, instance_id, display_name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [newUser.id, assignment.instance_id, assignment.display_name || null]
         );
       }
     }
