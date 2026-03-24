@@ -216,7 +216,7 @@ router.get('/', async (req, res) => {
     } else {
       // User sees instances OWNED by them, assigned via user_instances, or linked to their forms
       query = `
-          SELECT DISTINCT ei.*
+          SELECT DISTINCT ei.*, COALESCE(ui.display_name, ei.name) as display_name
           FROM evolution_instances ei
           LEFT JOIN forms f ON f.settings->>'evolution_instance_id' = ei.id::text
           LEFT JOIN user_forms uf ON uf.form_id = f.id
