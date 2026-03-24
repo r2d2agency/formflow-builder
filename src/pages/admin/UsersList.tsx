@@ -149,6 +149,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
+      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
     };
 
     await updateUser.mutateAsync({ id: selectedUser.id, data: payload });
