@@ -113,6 +113,8 @@ const EvolutionInstances: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingInstance, setEditingInstance] = useState<EvolutionInstance | null>(null);
   const [instanceToDelete, setInstanceToDelete] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState('');
   
   // QR Code State
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
