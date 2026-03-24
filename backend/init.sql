@@ -75,6 +75,15 @@ CREATE TABLE IF NOT EXISTS user_forms (
     UNIQUE(user_id, form_id)
 );
 
+-- User-Instance permissions table (which users can access which Evolution instances)
+CREATE TABLE IF NOT EXISTS user_instances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    instance_id UUID NOT NULL REFERENCES evolution_instances(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, instance_id)
+);
+
 -- System settings table (branding, etc.)
 CREATE TABLE IF NOT EXISTS system_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
