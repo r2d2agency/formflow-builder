@@ -42,8 +42,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useChangePassword } from '@/hooks/useUsers';
 import { useForms } from '@/hooks/useForms';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
 import type { User, CreateUserPayload, UpdateUserPayload } from '@/types';
-import { Plus, Pencil, Trash2, Key, Users, Shield, UserIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Key, Users, Shield, UserIcon, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -51,6 +52,7 @@ const UsersList: React.FC = () => {
   const { user: currentUser } = useAuth();
   const { data: users, isLoading } = useUsers();
   const { data: formsData } = useForms(1, 100);
+  const { data: evolutionInstances } = useEvolutionInstances();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -69,6 +71,7 @@ const UsersList: React.FC = () => {
     name: '',
     role: 'user' as 'admin' | 'user',
     form_ids: [] as string[],
+    instance_ids: [] as string[],
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -85,6 +88,7 @@ const UsersList: React.FC = () => {
       name: '',
       role: 'user',
       form_ids: [],
+      instance_ids: [],
     });
   };
 
@@ -101,6 +105,7 @@ const UsersList: React.FC = () => {
       name: user.name,
       role: user.role,
       form_ids: user.assigned_forms?.map(f => f.id) || [],
+      instance_ids: user.assigned_instances?.map(i => i.id) || [],
     });
     setIsEditOpen(true);
   };
@@ -125,6 +130,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
+      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
     };
 
     await createUser.mutateAsync(payload);
@@ -140,6 +146,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
+      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
     };
 
     await updateUser.mutateAsync({ id: selectedUser.id, data: payload });
@@ -177,6 +184,15 @@ const UsersList: React.FC = () => {
       form_ids: prev.form_ids.includes(formId)
         ? prev.form_ids.filter(id => id !== formId)
         : [...prev.form_ids, formId],
+    }));
+  };
+
+  const toggleInstanceSelection = (instanceId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      instance_ids: prev.instance_ids.includes(instanceId)
+        ? prev.instance_ids.filter(id => id !== instanceId)
+        : [...prev.instance_ids, instanceId],
     }));
   };
 
@@ -336,30 +352,59 @@ const UsersList: React.FC = () => {
               </Select>
             </div>
             {formData.role === 'user' && (
-              <div className="space-y-2">
-                <Label>Formulários Permitidos</Label>
-                <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
-                  {forms.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum formulário criado</p>
-                  ) : (
-                    forms.map((form) => (
-                      <div key={form.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`form-${form.id}`}
-                          checked={formData.form_ids.includes(form.id)}
-                          onCheckedChange={() => toggleFormSelection(form.id)}
-                        />
-                        <label
-                          htmlFor={`form-${form.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {form.name}
-                        </label>
-                      </div>
-                    ))
-                  )}
+              <>
+                <div className="space-y-2">
+                  <Label>Formulários Permitidos</Label>
+                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                    {forms.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum formulário criado</p>
+                    ) : (
+                      forms.map((form) => (
+                        <div key={form.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`form-${form.id}`}
+                            checked={formData.form_ids.includes(form.id)}
+                            onCheckedChange={() => toggleFormSelection(form.id)}
+                          />
+                          <label
+                            htmlFor={`form-${form.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {form.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Wifi className="h-4 w-4" />
+                    Conexões Evolution Permitidas
+                  </Label>
+                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                    {!evolutionInstances || evolutionInstances.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhuma conexão criada</p>
+                    ) : (
+                      evolutionInstances.map((instance) => (
+                        <div key={instance.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`instance-${instance.id}`}
+                            checked={formData.instance_ids.includes(instance.id)}
+                            onCheckedChange={() => toggleInstanceSelection(instance.id)}
+                          />
+                          <label
+                            htmlFor={`instance-${instance.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {instance.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>
@@ -416,30 +461,59 @@ const UsersList: React.FC = () => {
               </Select>
             </div>
             {formData.role === 'user' && (
-              <div className="space-y-2">
-                <Label>Formulários Permitidos</Label>
-                <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
-                  {forms.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum formulário criado</p>
-                  ) : (
-                    forms.map((form) => (
-                      <div key={form.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`edit-form-${form.id}`}
-                          checked={formData.form_ids.includes(form.id)}
-                          onCheckedChange={() => toggleFormSelection(form.id)}
-                        />
-                        <label
-                          htmlFor={`edit-form-${form.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {form.name}
-                        </label>
-                      </div>
-                    ))
-                  )}
+              <>
+                <div className="space-y-2">
+                  <Label>Formulários Permitidos</Label>
+                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                    {forms.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum formulário criado</p>
+                    ) : (
+                      forms.map((form) => (
+                        <div key={form.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-form-${form.id}`}
+                            checked={formData.form_ids.includes(form.id)}
+                            onCheckedChange={() => toggleFormSelection(form.id)}
+                          />
+                          <label
+                            htmlFor={`edit-form-${form.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {form.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Wifi className="h-4 w-4" />
+                    Conexões Evolution Permitidas
+                  </Label>
+                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                    {!evolutionInstances || evolutionInstances.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhuma conexão criada</p>
+                    ) : (
+                      evolutionInstances.map((instance) => (
+                        <div key={instance.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-instance-${instance.id}`}
+                            checked={formData.instance_ids.includes(instance.id)}
+                            onCheckedChange={() => toggleInstanceSelection(instance.id)}
+                          />
+                          <label
+                            htmlFor={`edit-instance-${instance.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {instance.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>

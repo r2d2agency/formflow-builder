@@ -223,6 +223,24 @@ const runMigrations = async () => {
       console.warn('[startup] Failed to create whatsapp_templates table:', e.message);
     }
 
+    // 7. Create user_instances junction table (multiple instances per user)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_instances (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          instance_id UUID NOT NULL REFERENCES evolution_instances(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(user_id, instance_id)
+        );
+      `);
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_user_instances_user_id ON user_instances(user_id)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_user_instances_instance_id ON user_instances(instance_id)');
+      console.log('[startup] Checked/Created user_instances table');
+    } catch (e) {
+      console.warn('[startup] Failed to create user_instances table:', e.message);
+    }
+
     console.log('[startup] Migrations checked');
 
     // Seed default admin user if no users exist

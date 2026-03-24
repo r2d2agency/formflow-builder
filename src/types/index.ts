@@ -7,6 +7,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   assigned_forms?: { id: string; name: string; slug: string }[];
+  assigned_instances?: { id: string; name: string; api_url: string }[];
 }
 
 export interface AuthState {
@@ -22,6 +23,7 @@ export interface CreateUserPayload {
   name: string;
   role: 'admin' | 'user';
   form_ids?: string[];
+  instance_ids?: string[];
 }
 
 export interface UpdateUserPayload {
@@ -29,6 +31,7 @@ export interface UpdateUserPayload {
   name: string;
   role: 'admin' | 'user';
   form_ids?: string[];
+  instance_ids?: string[];
 }
 
 export interface ChangePasswordPayload {

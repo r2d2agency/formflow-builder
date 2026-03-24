@@ -214,14 +214,16 @@ router.get('/', async (req, res) => {
       `;
       params = [];
     } else {
-      // User sees instances OWNED by them OR linked to their forms
+      // User sees instances OWNED by them, assigned via user_instances, or linked to their forms
       query = `
           SELECT DISTINCT ei.*
           FROM evolution_instances ei
           LEFT JOIN forms f ON f.settings->>'evolution_instance_id' = ei.id::text
           LEFT JOIN user_forms uf ON uf.form_id = f.id
+          LEFT JOIN user_instances ui ON ui.instance_id = ei.id AND ui.user_id = $1
           WHERE ei.user_id = $1 
              OR uf.user_id = $1
+             OR ui.user_id = $1
           ORDER BY ei.created_at DESC
       `;
     }

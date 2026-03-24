@@ -75,6 +75,15 @@ CREATE TABLE IF NOT EXISTS user_forms (
     UNIQUE(user_id, form_id)
 );
 
+-- User-Instance permissions table (which users can access which Evolution instances)
+CREATE TABLE IF NOT EXISTS user_instances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    instance_id UUID NOT NULL REFERENCES evolution_instances(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, instance_id)
+);
+
 -- System settings table (branding, etc.)
 CREATE TABLE IF NOT EXISTS system_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,6 +128,8 @@ CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
 CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_forms_form_id ON user_forms(form_id);
+CREATE INDEX IF NOT EXISTS idx_user_instances_user_id ON user_instances(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_instances_instance_id ON user_instances(instance_id);
 CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
 CREATE INDEX IF NOT EXISTS idx_short_links_code ON short_links(code);
 CREATE INDEX IF NOT EXISTS idx_short_links_is_active ON short_links(is_active);
