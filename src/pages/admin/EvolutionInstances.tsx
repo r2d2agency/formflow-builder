@@ -441,7 +441,7 @@ const EvolutionInstances: React.FC = () => {
                 </div>
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{instance.name}</CardTitle>
+                    <CardTitle className="text-lg">{instance.display_name || instance.name}</CardTitle>
                     {instance.is_active ? (
                       <Badge variant="default" className="bg-green-600 hover:bg-green-700">
                         Ativa
