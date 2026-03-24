@@ -133,7 +133,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
-      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
+      instance_assignments: formData.role === 'user' ? formData.instance_assignments : undefined,
     };
 
     await createUser.mutateAsync(payload);
