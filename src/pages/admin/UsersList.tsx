@@ -71,7 +71,7 @@ const UsersList: React.FC = () => {
     name: '',
     role: 'user' as 'admin' | 'user',
     form_ids: [] as string[],
-    instance_ids: [] as string[],
+    instance_assignments: [] as { instance_id: string; display_name: string }[],
   });
 
   const [passwordData, setPasswordData] = useState({
