@@ -144,6 +144,7 @@ const EvolutionInstances: React.FC = () => {
   const disconnectInstance = useDisconnectEvolutionInstance();
   const sendTestMessage = useSendTestMessage();
   const { uploadFile, isUploading: isUploadingFile } = useFileUpload();
+  const updateDisplayName = useUpdateDisplayName();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
