@@ -78,7 +78,7 @@ router.get('/:id', adminOnly, async (req, res) => {
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, password, name, role, form_ids } = req.body;
+    const { email, password, name, role, form_ids, instance_ids } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, error: 'Email, senha e nome são obrigatórios' });
@@ -103,6 +103,16 @@ router.post('/', adminOnly, async (req, res) => {
         await pool.query(
           'INSERT INTO user_forms (user_id, form_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
           [newUser.id, formId]
+        );
+      }
+    }
+
+    // Assign instances if provided
+    if (instance_ids && instance_ids.length > 0 && role !== 'admin') {
+      for (const instanceId of instance_ids) {
+        await pool.query(
+          'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [newUser.id, instanceId]
         );
       }
     }
