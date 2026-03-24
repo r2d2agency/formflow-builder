@@ -382,6 +382,49 @@ router.put('/:id', adminOnly, async (req, res) => {
   }
 });
 
+// PATCH /api/evolution-instances/:id/display-name - Update friendly name for current user
+router.patch('/:id/display-name', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const userId = req.user.id;
+    const instanceId = req.params.id;
+    const { display_name } = req.body;
+
+    // Check if user has this instance assigned
+    const check = await pool.query(
+      'SELECT 1 FROM user_instances WHERE user_id = $1 AND instance_id = $2',
+      [userId, instanceId]
+    );
+
+    if (check.rows.length > 0) {
+      // Update existing assignment
+      await pool.query(
+        'UPDATE user_instances SET display_name = $1 WHERE user_id = $2 AND instance_id = $3',
+        [display_name || null, userId, instanceId]
+      );
+    } else {
+      // Also allow owner to set display_name directly on the instance
+      const ownerCheck = await pool.query(
+        'SELECT 1 FROM evolution_instances WHERE id = $1 AND user_id = $2',
+        [instanceId, userId]
+      );
+      if (ownerCheck.rows.length === 0 && req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Sem permissão' });
+      }
+      // For admin/owner without user_instances row, insert one
+      await pool.query(
+        'INSERT INTO user_instances (user_id, instance_id, display_name) VALUES ($1, $2, $3) ON CONFLICT (user_id, instance_id) DO UPDATE SET display_name = $3',
+        [userId, instanceId, display_name || null]
+      );
+    }
+
+    res.json({ success: true, message: 'Nome atualizado com sucesso' });
+  } catch (error) {
+    console.error('Update display name error:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar nome' });
+  }
+});
+
 // DELETE /api/evolution-instances/:id
 router.delete('/:id', adminOnly, async (req, res) => {
   try {
