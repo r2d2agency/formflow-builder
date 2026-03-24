@@ -51,6 +51,7 @@ export const API_CONFIG = {
     // Evolution Instances
     EVOLUTION_INSTANCES: '/evolution-instances',
     EVOLUTION_INSTANCE_BY_ID: (id: string) => `/evolution-instances/${id}`,
+    EVOLUTION_INSTANCE_DISPLAY_NAME: (id: string) => `/evolution-instances/${id}/display-name`,
     
     // Webhooks
     WEBHOOKS: '/webhooks',

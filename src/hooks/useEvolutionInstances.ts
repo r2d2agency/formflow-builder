@@ -98,6 +98,37 @@ export const useUpdateEvolutionInstance = () => {
   });
 };
 
+export const useUpdateDisplayName = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, display_name }: { id: string; display_name: string | null }) => {
+      const response = await apiService.patch(
+        API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCE_DISPLAY_NAME(id),
+        { display_name }
+      );
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evolution-instances'] });
+      toast({
+        title: 'Nome atualizado',
+        description: 'O nome amigável foi salvo com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useDeleteEvolutionInstance = () => {
   const queryClient = useQueryClient();
 

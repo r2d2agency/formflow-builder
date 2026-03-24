@@ -19,10 +19,33 @@ const adminOnly = (req, res, next) => {
 router.get('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(
+    const usersResult = await pool.query(
       'SELECT id, email, name, role, created_at, updated_at FROM users ORDER BY created_at DESC'
     );
-    res.json({ success: true, data: result.rows });
+
+    // For each user, load assigned forms and instances
+    const users = await Promise.all(usersResult.rows.map(async (user) => {
+      const [formsRes, instancesRes] = await Promise.all([
+        pool.query(
+          `SELECT f.id, f.name, f.slug FROM forms f 
+           INNER JOIN user_forms uf ON f.id = uf.form_id 
+           WHERE uf.user_id = $1`, [user.id]
+        ),
+        pool.query(
+          `SELECT ei.id, ei.name, ei.api_url, ui.display_name 
+           FROM evolution_instances ei 
+           INNER JOIN user_instances ui ON ei.id = ui.instance_id 
+           WHERE ui.user_id = $1`, [user.id]
+        ),
+      ]);
+      return {
+        ...user,
+        assigned_forms: formsRes.rows,
+        assigned_instances: instancesRes.rows,
+      };
+    }));
+
+    res.json({ success: true, data: users });
   } catch (error) {
     console.error('[users] Get users error:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar usuários' });
