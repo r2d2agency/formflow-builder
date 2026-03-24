@@ -71,7 +71,7 @@ const UsersList: React.FC = () => {
     name: '',
     role: 'user' as 'admin' | 'user',
     form_ids: [] as string[],
-    instance_ids: [] as string[],
+    instance_assignments: [] as { instance_id: string; display_name: string }[],
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -88,7 +88,7 @@ const UsersList: React.FC = () => {
       name: '',
       role: 'user',
       form_ids: [],
-      instance_ids: [],
+      instance_assignments: [],
     });
   };
 
@@ -105,7 +105,10 @@ const UsersList: React.FC = () => {
       name: user.name,
       role: user.role,
       form_ids: user.assigned_forms?.map(f => f.id) || [],
-      instance_ids: user.assigned_instances?.map(i => i.id) || [],
+      instance_assignments: user.assigned_instances?.map(i => ({ 
+        instance_id: i.id, 
+        display_name: i.display_name || '' 
+      })) || [],
     });
     setIsEditOpen(true);
   };
@@ -130,7 +133,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
-      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
+      instance_assignments: formData.role === 'user' ? formData.instance_assignments : undefined,
     };
 
     await createUser.mutateAsync(payload);
@@ -146,7 +149,7 @@ const UsersList: React.FC = () => {
       name: formData.name,
       role: formData.role,
       form_ids: formData.role === 'user' ? formData.form_ids : undefined,
-      instance_ids: formData.role === 'user' ? formData.instance_ids : undefined,
+      instance_assignments: formData.role === 'user' ? formData.instance_assignments : undefined,
     };
 
     await updateUser.mutateAsync({ id: selectedUser.id, data: payload });
@@ -188,11 +191,23 @@ const UsersList: React.FC = () => {
   };
 
   const toggleInstanceSelection = (instanceId: string) => {
+    setFormData(prev => {
+      const exists = prev.instance_assignments.some(a => a.instance_id === instanceId);
+      return {
+        ...prev,
+        instance_assignments: exists
+          ? prev.instance_assignments.filter(a => a.instance_id !== instanceId)
+          : [...prev.instance_assignments, { instance_id: instanceId, display_name: '' }],
+      };
+    });
+  };
+
+  const updateInstanceDisplayName = (instanceId: string, displayName: string) => {
     setFormData(prev => ({
       ...prev,
-      instance_ids: prev.instance_ids.includes(instanceId)
-        ? prev.instance_ids.filter(id => id !== instanceId)
-        : [...prev.instance_ids, instanceId],
+      instance_assignments: prev.instance_assignments.map(a =>
+        a.instance_id === instanceId ? { ...a, display_name: displayName } : a
+      ),
     }));
   };
 
@@ -382,25 +397,39 @@ const UsersList: React.FC = () => {
                     <Wifi className="h-4 w-4" />
                     Conexões Evolution Permitidas
                   </Label>
-                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-3">
                     {!evolutionInstances || evolutionInstances.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhuma conexão criada</p>
                     ) : (
-                      evolutionInstances.map((instance) => (
-                        <div key={instance.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`instance-${instance.id}`}
-                            checked={formData.instance_ids.includes(instance.id)}
-                            onCheckedChange={() => toggleInstanceSelection(instance.id)}
-                          />
-                          <label
-                            htmlFor={`instance-${instance.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {instance.name}
-                          </label>
-                        </div>
-                      ))
+                      evolutionInstances.map((instance) => {
+                        const assignment = formData.instance_assignments.find(a => a.instance_id === instance.id);
+                        const isSelected = !!assignment;
+                        return (
+                          <div key={instance.id} className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`instance-${instance.id}`}
+                                checked={isSelected}
+                                onCheckedChange={() => toggleInstanceSelection(instance.id)}
+                              />
+                              <label
+                                htmlFor={`instance-${instance.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {instance.name}
+                              </label>
+                            </div>
+                            {isSelected && (
+                              <Input
+                                placeholder="Nome personalizado (ex: Vendas, Suporte...)"
+                                value={assignment?.display_name || ''}
+                                onChange={(e) => updateInstanceDisplayName(instance.id, e.target.value)}
+                                className="ml-6 h-8 text-sm"
+                              />
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -491,25 +520,39 @@ const UsersList: React.FC = () => {
                     <Wifi className="h-4 w-4" />
                     Conexões Evolution Permitidas
                   </Label>
-                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-3">
                     {!evolutionInstances || evolutionInstances.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhuma conexão criada</p>
                     ) : (
-                      evolutionInstances.map((instance) => (
-                        <div key={instance.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`edit-instance-${instance.id}`}
-                            checked={formData.instance_ids.includes(instance.id)}
-                            onCheckedChange={() => toggleInstanceSelection(instance.id)}
-                          />
-                          <label
-                            htmlFor={`edit-instance-${instance.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {instance.name}
-                          </label>
-                        </div>
-                      ))
+                      evolutionInstances.map((instance) => {
+                        const assignment = formData.instance_assignments.find(a => a.instance_id === instance.id);
+                        const isSelected = !!assignment;
+                        return (
+                          <div key={instance.id} className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`edit-instance-${instance.id}`}
+                                checked={isSelected}
+                                onCheckedChange={() => toggleInstanceSelection(instance.id)}
+                              />
+                              <label
+                                htmlFor={`edit-instance-${instance.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {instance.name}
+                              </label>
+                            </div>
+                            {isSelected && (
+                              <Input
+                                placeholder="Nome personalizado (ex: Vendas, Suporte...)"
+                                value={assignment?.display_name || ''}
+                                onChange={(e) => updateInstanceDisplayName(instance.id, e.target.value)}
+                                className="ml-6 h-8 text-sm"
+                              />
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>

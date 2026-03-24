@@ -808,7 +808,7 @@ const FormEditor: React.FC = () => {
                         <SelectContent>
                           {(evolutionInstances || []).map((instance) => (
                             <SelectItem key={instance.id} value={instance.id}>
-                              {instance.name}
+                              {instance.display_name || instance.name}
                             </SelectItem>
                           ))}
                         </SelectContent>

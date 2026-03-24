@@ -7,7 +7,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   assigned_forms?: { id: string; name: string; slug: string }[];
-  assigned_instances?: { id: string; name: string; api_url: string }[];
+  assigned_instances?: { id: string; name: string; api_url: string; display_name?: string }[];
 }
 
 export interface AuthState {
@@ -23,7 +23,7 @@ export interface CreateUserPayload {
   name: string;
   role: 'admin' | 'user';
   form_ids?: string[];
-  instance_ids?: string[];
+  instance_assignments?: { instance_id: string; display_name?: string }[];
 }
 
 export interface UpdateUserPayload {
@@ -31,7 +31,7 @@ export interface UpdateUserPayload {
   name: string;
   role: 'admin' | 'user';
   form_ids?: string[];
-  instance_ids?: string[];
+  instance_assignments?: { instance_id: string; display_name?: string }[];
 }
 
 export interface ChangePasswordPayload {
@@ -200,8 +200,9 @@ export interface Lead {
 export interface EvolutionInstance {
   id: string;
   name: string;
+  display_name?: string;
   api_url: string;
-  internal_api_url?: string; // URL/IP interno para uso no backend (bypass DNS)
+  internal_api_url?: string;
   api_key: string;
   default_number?: string;
   is_active: boolean;

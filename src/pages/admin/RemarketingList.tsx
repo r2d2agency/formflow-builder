@@ -738,7 +738,7 @@ const RemarketingList: React.FC = () => {
                   <SelectContent>
                     {instances?.map((instance) => (
                       <SelectItem key={instance.id} value={instance.id}>
-                        {instance.name} {instance.is_active ? '(Ativa)' : '(Inativa)'}
+                        {instance.display_name || instance.name} {instance.is_active ? '(Ativa)' : '(Inativa)'}
                       </SelectItem>
                     ))}
                   </SelectContent>

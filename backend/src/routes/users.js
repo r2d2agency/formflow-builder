@@ -51,9 +51,9 @@ router.get('/:id', adminOnly, async (req, res) => {
       [req.params.id]
     );
 
-    // Get user's assigned instances
+    // Get user's assigned instances (with display_name)
     const instancesResult = await pool.query(
-      `SELECT ei.id, ei.name, ei.api_url 
+      `SELECT ei.id, ei.name, ei.api_url, ui.display_name 
        FROM evolution_instances ei 
        INNER JOIN user_instances ui ON ei.id = ui.instance_id 
        WHERE ui.user_id = $1`,
@@ -78,7 +78,7 @@ router.get('/:id', adminOnly, async (req, res) => {
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, password, name, role, form_ids, instance_ids } = req.body;
+    const { email, password, name, role, form_ids, instance_ids, instance_assignments } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, error: 'Email, senha e nome são obrigatórios' });
@@ -107,12 +107,13 @@ router.post('/', adminOnly, async (req, res) => {
       }
     }
 
-    // Assign instances if provided
-    if (instance_ids && instance_ids.length > 0 && role !== 'admin') {
-      for (const instanceId of instance_ids) {
+    // Assign instances if provided (new format with display_name)
+    const assignments = instance_assignments || (instance_ids ? instance_ids.map(id => ({ instance_id: id })) : []);
+    if (assignments.length > 0 && role !== 'admin') {
+      for (const assignment of assignments) {
         await pool.query(
-          'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [newUser.id, instanceId]
+          'INSERT INTO user_instances (user_id, instance_id, display_name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [newUser.id, assignment.instance_id, assignment.display_name || null]
         );
       }
     }
@@ -131,7 +132,7 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, name, role, form_ids, instance_ids } = req.body;
+    const { email, name, role, form_ids, instance_ids, instance_assignments } = req.body;
 
     const result = await pool.query(
       `UPDATE users SET email = $1, name = $2, role = $3
@@ -158,13 +159,14 @@ router.put('/:id', adminOnly, async (req, res) => {
     }
 
     // Update instance assignments if provided
-    if (instance_ids !== undefined) {
+    const assignments = instance_assignments || (instance_ids ? instance_ids.map(id => ({ instance_id: id })) : undefined);
+    if (assignments !== undefined) {
       await pool.query('DELETE FROM user_instances WHERE user_id = $1', [req.params.id]);
-      if (role !== 'admin' && instance_ids.length > 0) {
-        for (const instanceId of instance_ids) {
+      if (role !== 'admin' && assignments.length > 0) {
+        for (const assignment of assignments) {
           await pool.query(
-            'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [req.params.id, instanceId]
+            'INSERT INTO user_instances (user_id, instance_id, display_name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [req.params.id, assignment.instance_id, assignment.display_name || null]
           );
         }
       }
