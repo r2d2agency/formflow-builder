@@ -51,9 +51,9 @@ router.get('/:id', adminOnly, async (req, res) => {
       [req.params.id]
     );
 
-    // Get user's assigned instances
+    // Get user's assigned instances (with display_name)
     const instancesResult = await pool.query(
-      `SELECT ei.id, ei.name, ei.api_url 
+      `SELECT ei.id, ei.name, ei.api_url, ui.display_name 
        FROM evolution_instances ei 
        INNER JOIN user_instances ui ON ei.id = ui.instance_id 
        WHERE ui.user_id = $1`,
