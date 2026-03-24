@@ -105,7 +105,10 @@ const UsersList: React.FC = () => {
       name: user.name,
       role: user.role,
       form_ids: user.assigned_forms?.map(f => f.id) || [],
-      instance_ids: user.assigned_instances?.map(i => i.id) || [],
+      instance_assignments: user.assigned_instances?.map(i => ({ 
+        instance_id: i.id, 
+        display_name: i.display_name || '' 
+      })) || [],
     });
     setIsEditOpen(true);
   };
