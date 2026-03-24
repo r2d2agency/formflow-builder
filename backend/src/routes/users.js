@@ -131,7 +131,7 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, name, role, form_ids } = req.body;
+    const { email, name, role, form_ids, instance_ids } = req.body;
 
     const result = await pool.query(
       `UPDATE users SET email = $1, name = $2, role = $3
@@ -146,15 +146,25 @@ router.put('/:id', adminOnly, async (req, res) => {
 
     // Update form assignments if provided
     if (form_ids !== undefined) {
-      // Remove old assignments
       await pool.query('DELETE FROM user_forms WHERE user_id = $1', [req.params.id]);
-      
-      // Add new assignments (only for non-admin users)
       if (role !== 'admin' && form_ids.length > 0) {
         for (const formId of form_ids) {
           await pool.query(
             'INSERT INTO user_forms (user_id, form_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [req.params.id, formId]
+          );
+        }
+      }
+    }
+
+    // Update instance assignments if provided
+    if (instance_ids !== undefined) {
+      await pool.query('DELETE FROM user_instances WHERE user_id = $1', [req.params.id]);
+      if (role !== 'admin' && instance_ids.length > 0) {
+        for (const instanceId of instance_ids) {
+          await pool.query(
+            'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [req.params.id, instanceId]
           );
         }
       }
