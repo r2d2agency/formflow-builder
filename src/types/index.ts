@@ -200,8 +200,9 @@ export interface Lead {
 export interface EvolutionInstance {
   id: string;
   name: string;
+  display_name?: string;
   api_url: string;
-  internal_api_url?: string; // URL/IP interno para uso no backend (bypass DNS)
+  internal_api_url?: string;
   api_key: string;
   default_number?: string;
   is_active: boolean;
