@@ -51,11 +51,21 @@ router.get('/:id', adminOnly, async (req, res) => {
       [req.params.id]
     );
 
+    // Get user's assigned instances
+    const instancesResult = await pool.query(
+      `SELECT ei.id, ei.name, ei.api_url 
+       FROM evolution_instances ei 
+       INNER JOIN user_instances ui ON ei.id = ui.instance_id 
+       WHERE ui.user_id = $1`,
+      [req.params.id]
+    );
+
     res.json({ 
       success: true, 
       data: {
         ...result.rows[0],
-        assigned_forms: formsResult.rows
+        assigned_forms: formsResult.rows,
+        assigned_instances: instancesResult.rows
       }
     });
   } catch (error) {
