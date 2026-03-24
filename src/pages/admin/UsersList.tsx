@@ -45,8 +45,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useChangePassword } from '@/hooks/useUsers';
 import { useForms } from '@/hooks/useForms';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
 import type { User, CreateUserPayload, UpdateUserPayload } from '@/types';
-import { Plus, Pencil, Trash2, Key, Users, Shield, UserIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Key, Users, Shield, UserIcon, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
