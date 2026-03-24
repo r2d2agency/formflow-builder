@@ -330,7 +330,12 @@ const FormsList: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-semibold">{form.submissions_count ?? 0}</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{form.submissions_count ?? 0}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {form.complete_leads ?? 0} completos · {form.partial_leads ?? 0} parciais
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
