@@ -159,13 +159,14 @@ router.put('/:id', adminOnly, async (req, res) => {
     }
 
     // Update instance assignments if provided
-    if (instance_ids !== undefined) {
+    const assignments = instance_assignments || (instance_ids ? instance_ids.map(id => ({ instance_id: id })) : undefined);
+    if (assignments !== undefined) {
       await pool.query('DELETE FROM user_instances WHERE user_id = $1', [req.params.id]);
-      if (role !== 'admin' && instance_ids.length > 0) {
-        for (const instanceId of instance_ids) {
+      if (role !== 'admin' && assignments.length > 0) {
+        for (const assignment of assignments) {
           await pool.query(
-            'INSERT INTO user_instances (user_id, instance_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [req.params.id, instanceId]
+            'INSERT INTO user_instances (user_id, instance_id, display_name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [req.params.id, assignment.instance_id, assignment.display_name || null]
           );
         }
       }
