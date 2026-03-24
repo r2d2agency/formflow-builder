@@ -128,6 +128,8 @@ CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
 CREATE INDEX IF NOT EXISTS idx_forms_is_active ON forms(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_forms_user_id ON user_forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_forms_form_id ON user_forms(form_id);
+CREATE INDEX IF NOT EXISTS idx_user_instances_user_id ON user_instances(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_instances_instance_id ON user_instances(instance_id);
 CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
 CREATE INDEX IF NOT EXISTS idx_short_links_code ON short_links(code);
 CREATE INDEX IF NOT EXISTS idx_short_links_is_active ON short_links(is_active);
