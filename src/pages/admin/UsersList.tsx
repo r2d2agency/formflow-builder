@@ -88,7 +88,7 @@ const UsersList: React.FC = () => {
       name: '',
       role: 'user',
       form_ids: [],
-      instance_ids: [],
+      instance_assignments: [],
     });
   };
 
