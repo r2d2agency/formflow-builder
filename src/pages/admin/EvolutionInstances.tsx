@@ -453,9 +453,9 @@ const EvolutionInstances: React.FC = () => {
                           onChange={(e) => setRenamingValue(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              updateInstance.mutateAsync({
+                              updateDisplayName.mutateAsync({
                                 id: instance.id,
-                                data: { display_name: renamingValue.trim() || null },
+                                display_name: renamingValue.trim() || null,
                               }).then(() => setRenamingId(null));
                             }
                             if (e.key === 'Escape') setRenamingId(null);
@@ -465,9 +465,9 @@ const EvolutionInstances: React.FC = () => {
                           placeholder="Nome amigável..."
                         />
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                          updateInstance.mutateAsync({
+                          updateDisplayName.mutateAsync({
                             id: instance.id,
-                            data: { display_name: renamingValue.trim() || null },
+                            display_name: renamingValue.trim() || null,
                           }).then(() => setRenamingId(null));
                         }}>
                           <Check className="h-3.5 w-3.5 text-green-600" />
