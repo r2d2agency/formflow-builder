@@ -520,25 +520,39 @@ const UsersList: React.FC = () => {
                     <Wifi className="h-4 w-4" />
                     Conexões Evolution Permitidas
                   </Label>
-                  <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-3">
                     {!evolutionInstances || evolutionInstances.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhuma conexão criada</p>
                     ) : (
-                      evolutionInstances.map((instance) => (
-                        <div key={instance.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`edit-instance-${instance.id}`}
-                            checked={formData.instance_ids.includes(instance.id)}
-                            onCheckedChange={() => toggleInstanceSelection(instance.id)}
-                          />
-                          <label
-                            htmlFor={`edit-instance-${instance.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {instance.name}
-                          </label>
-                        </div>
-                      ))
+                      evolutionInstances.map((instance) => {
+                        const assignment = formData.instance_assignments.find(a => a.instance_id === instance.id);
+                        const isSelected = !!assignment;
+                        return (
+                          <div key={instance.id} className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`edit-instance-${instance.id}`}
+                                checked={isSelected}
+                                onCheckedChange={() => toggleInstanceSelection(instance.id)}
+                              />
+                              <label
+                                htmlFor={`edit-instance-${instance.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {instance.name}
+                              </label>
+                            </div>
+                            {isSelected && (
+                              <Input
+                                placeholder="Nome personalizado (ex: Vendas, Suporte...)"
+                                value={assignment?.display_name || ''}
+                                onChange={(e) => updateInstanceDisplayName(instance.id, e.target.value)}
+                                className="ml-6 h-8 text-sm"
+                              />
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
