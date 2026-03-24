@@ -230,12 +230,14 @@ const runMigrations = async () => {
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           instance_id UUID NOT NULL REFERENCES evolution_instances(id) ON DELETE CASCADE,
+          display_name VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           UNIQUE(user_id, instance_id)
         );
       `);
       await pool.query('CREATE INDEX IF NOT EXISTS idx_user_instances_user_id ON user_instances(user_id)');
       await pool.query('CREATE INDEX IF NOT EXISTS idx_user_instances_instance_id ON user_instances(instance_id)');
+      await pool.query('ALTER TABLE user_instances ADD COLUMN IF NOT EXISTS display_name VARCHAR(255)');
       console.log('[startup] Checked/Created user_instances table');
     } catch (e) {
       console.warn('[startup] Failed to create user_instances table:', e.message);
