@@ -78,7 +78,7 @@ router.get('/:id', adminOnly, async (req, res) => {
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { email, password, name, role, form_ids, instance_ids } = req.body;
+    const { email, password, name, role, form_ids, instance_ids, instance_assignments } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, error: 'Email, senha e nome são obrigatórios' });
