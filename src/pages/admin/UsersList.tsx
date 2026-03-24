@@ -191,11 +191,23 @@ const UsersList: React.FC = () => {
   };
 
   const toggleInstanceSelection = (instanceId: string) => {
+    setFormData(prev => {
+      const exists = prev.instance_assignments.some(a => a.instance_id === instanceId);
+      return {
+        ...prev,
+        instance_assignments: exists
+          ? prev.instance_assignments.filter(a => a.instance_id !== instanceId)
+          : [...prev.instance_assignments, { instance_id: instanceId, display_name: '' }],
+      };
+    });
+  };
+
+  const updateInstanceDisplayName = (instanceId: string, displayName: string) => {
     setFormData(prev => ({
       ...prev,
-      instance_ids: prev.instance_ids.includes(instanceId)
-        ? prev.instance_ids.filter(id => id !== instanceId)
-        : [...prev.instance_ids, instanceId],
+      instance_assignments: prev.instance_assignments.map(a =>
+        a.instance_id === instanceId ? { ...a, display_name: displayName } : a
+      ),
     }));
   };
 
