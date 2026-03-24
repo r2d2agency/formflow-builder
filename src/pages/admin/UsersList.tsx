@@ -55,6 +55,7 @@ const UsersList: React.FC = () => {
   const { user: currentUser } = useAuth();
   const { data: users, isLoading } = useUsers();
   const { data: formsData } = useForms(1, 100);
+  const { data: evolutionInstances } = useEvolutionInstances();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
