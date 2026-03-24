@@ -187,6 +187,15 @@ const UsersList: React.FC = () => {
     }));
   };
 
+  const toggleInstanceSelection = (instanceId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      instance_ids: prev.instance_ids.includes(instanceId)
+        ? prev.instance_ids.filter(id => id !== instanceId)
+        : [...prev.instance_ids, instanceId],
+    }));
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
