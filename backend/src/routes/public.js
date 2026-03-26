@@ -344,10 +344,20 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                        if (item.type === 'text') {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
-                       } else if (item.type === 'audio') {
-                           endpoint = '/message/sendWhatsAppAudio';
-                           payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }); 
-                         } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
+                        } else if (item.type === 'audio') {
+                            endpoint = '/message/sendWhatsAppAudio';
+                            payload = {
+                                number: cleanClientPhone,
+                                options: {
+                                    delay,
+                                    presence: 'recording',
+                                    encoding: true,
+                                },
+                                audioMessage: {
+                                    audio: getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }),
+                                },
+                            };
+                          } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                              endpoint = '/message/sendMedia';
                              payload.mediatype = item.type;
                              // Send URL directly to Evolution API - it supports fetching from URLs

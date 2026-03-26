@@ -159,7 +159,14 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
         endpoint = '/message/sendWhatsAppAudio';
         body = {
           number: cleanPhone,
-          audio: getMediaContent(finalContent, 'audio/mp3', { rawBase64: true })
+          options: {
+            delay: 1200,
+            presence: 'recording',
+            encoding: true
+          },
+          audioMessage: {
+            audio: getMediaContent(finalContent, 'audio/mp3', { rawBase64: true })
+          }
         };
       } else {
         endpoint = '/message/sendMedia';

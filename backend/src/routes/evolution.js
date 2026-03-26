@@ -130,8 +130,14 @@ const createEvolutionService = (instance) => {
         method: 'POST',
         body: JSON.stringify({
           number,
-          audio: audioUrl,
-          delay: 1200
+          options: {
+            delay: 1200,
+            presence: 'recording',
+            encoding: true,
+          },
+          audioMessage: {
+            audio: audioUrl,
+          }
         })
       });
     },
