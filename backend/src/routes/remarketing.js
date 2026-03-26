@@ -387,7 +387,17 @@ router.post('/campaigns/:id/test', async (req, res) => {
              payload.text = replaceVars(content);
         } else if (type === 'audio') {
              endpoint = '/message/sendWhatsAppAudio';
-             payload.audio = getMediaContent(content, 'audio/mp3', { rawBase64: true }); 
+             payload = {
+                number: cleanPhone,
+                options: {
+                    delay: 1200,
+                    presence: 'recording',
+                    encoding: true,
+                },
+                audioMessage: {
+                    audio: getMediaContent(content, 'audio/mp3', { rawBase64: true }),
+                },
+             };
           } else if (['video', 'document', 'image'].includes(type)) {
                endpoint = '/message/sendMedia';
                payload.mediatype = type;

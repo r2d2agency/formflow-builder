@@ -9,6 +9,10 @@ const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
   try {
     if (!url || typeof url !== 'string') return url;
 
+    if (rawBase64 && /^data:[^;]+;base64,/i.test(url)) {
+      return url.replace(/^data:[^;]+;base64,/i, '');
+    }
+
     // Check if URL points to our uploads
     if (url.includes('/api/uploads/') || url.includes('/uploads/')) {
       const uploadMarker = url.includes('/api/uploads/') ? '/api/uploads/' : '/uploads/';
