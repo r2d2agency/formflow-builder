@@ -345,14 +345,14 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                         if (item.type === 'text') {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
-                         } else if (item.type === 'audio') {
-                              endpoint = '/message/sendAudio';
-                             payload = {
-                                 number: cleanClientPhone,
-                                  delay,
-                                  ptt: true,
-                                  audio: await prepareAudioForEvolutionUrl(item.content, { req }),
-                             };
+                          } else if (item.type === 'audio') {
+                               endpoint = '/message/sendAudio';
+                              payload = {
+                                  number: cleanClientPhone,
+                                   delay,
+                                   ptt: true,
+                                   audio: await prepareAudioForEvolutionUrl(item.content, { sourceUrl: reqOrigin }),
+                              };
                           } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                              endpoint = '/message/sendMedia';
                              payload.mediatype = item.type;
