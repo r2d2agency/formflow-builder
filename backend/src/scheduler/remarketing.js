@@ -1,5 +1,6 @@
 const process = require('process');
 const { getMediaContent } = require('../utils/mediaHelper');
+const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
 
 // Helper to find phone number
 const findField = (data, searchTerms) => {
@@ -156,17 +157,12 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
 
     if (type !== 'text') {
       if (type === 'audio') {
-        endpoint = '/message/sendWhatsAppAudio';
+        endpoint = '/message/sendAudio';
         body = {
           number: cleanPhone,
-          options: {
-            delay: 1200,
-            presence: 'recording',
-            encoding: true
-          },
-          audioMessage: {
-            audio: await getMediaContent(finalContent, 'audio/mp3', { rawBase64: true })
-          }
+          delay: 1200,
+          ptt: true,
+          audio: await prepareAudioForEvolutionUrl(finalContent)
         };
       } else {
         endpoint = '/message/sendMedia';

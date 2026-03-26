@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
 
 const router = express.Router();
 
@@ -341,21 +342,16 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            linkPreview: false
                        };
 
-                       if (item.type === 'text') {
+                        if (item.type === 'text') {
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
-                        } else if (item.type === 'audio') {
-                             endpoint = '/message/sendWhatsAppAudio';
+                         } else if (item.type === 'audio') {
+                              endpoint = '/message/sendAudio';
                              payload = {
                                  number: cleanClientPhone,
-                                 options: {
-                                     delay,
-                                     presence: 'recording',
-                                     encoding: true,
-                                 },
-                                 audioMessage: {
-                                     audio: await getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }),
-                                 },
+                                  delay,
+                                  ptt: true,
+                                  audio: await prepareAudioForEvolutionUrl(item.content, { req }),
                              };
                           } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                              endpoint = '/message/sendMedia';
