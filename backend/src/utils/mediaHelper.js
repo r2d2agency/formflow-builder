@@ -29,6 +29,9 @@ const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
             console.log(`[MediaHelper] Converting local file to Base64: ${filePath}`);
             const fileBuffer = fs.readFileSync(filePath);
             const base64 = fileBuffer.toString('base64');
+            if (rawBase64) {
+              return base64;
+            }
             return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
           } else {
             console.warn(`[MediaHelper] Local file not found: ${filePath}`);
