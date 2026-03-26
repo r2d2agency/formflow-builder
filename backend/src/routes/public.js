@@ -346,7 +346,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            payload.text = replaceVariables(item.content);
                        } else if (item.type === 'audio') {
                            endpoint = '/message/sendWhatsAppAudio';
-                           payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3'); 
+                           payload.audio = getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }); 
                          } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                              endpoint = '/message/sendMedia';
                              payload.mediatype = item.type;
