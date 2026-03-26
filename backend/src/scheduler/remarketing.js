@@ -157,7 +157,7 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
 
     if (type !== 'text') {
       if (type === 'audio') {
-        endpoint = '/message/sendAudio';
+        endpoint = '/message/sendWhatsAppAudio';
         body = {
           number: cleanPhone,
           delay: 1200,
