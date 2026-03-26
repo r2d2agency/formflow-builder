@@ -165,17 +165,16 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
             encoding: true
           },
           audioMessage: {
-            audio: getMediaContent(finalContent, 'audio/mp3', { rawBase64: true })
+            audio: await getMediaContent(finalContent, 'audio/mp3', { rawBase64: true })
           }
         };
       } else {
         endpoint = '/message/sendMedia';
-        // Send URL directly if it's an HTTP URL, otherwise convert local files
         let mediaData = finalContent;
         if (finalContent && (finalContent.startsWith('http://') || finalContent.startsWith('https://'))) {
-            mediaData = finalContent; // Evolution API fetches from URL directly
+            mediaData = finalContent;
         } else {
-            mediaData = getMediaContent(finalContent, null);
+            mediaData = await getMediaContent(finalContent, null);
         }
 
         body = {
