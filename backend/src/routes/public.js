@@ -345,28 +345,26 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
                         } else if (item.type === 'audio') {
-                            endpoint = '/message/sendWhatsAppAudio';
-                            payload = {
-                                number: cleanClientPhone,
-                                options: {
-                                    delay,
-                                    presence: 'recording',
-                                    encoding: true,
-                                },
-                                audioMessage: {
-                                    audio: getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }),
-                                },
-                            };
+                             endpoint = '/message/sendWhatsAppAudio';
+                             payload = {
+                                 number: cleanClientPhone,
+                                 options: {
+                                     delay,
+                                     presence: 'recording',
+                                     encoding: true,
+                                 },
+                                 audioMessage: {
+                                     audio: await getMediaContent(item.content, item.mimeType || 'audio/mp3', { rawBase64: true }),
+                                 },
+                             };
                           } else if (item.type === 'video' || item.type === 'document' || item.type === 'image') {
                              endpoint = '/message/sendMedia';
                              payload.mediatype = item.type;
-                             // Send URL directly to Evolution API - it supports fetching from URLs
-                             // Only convert to base64 for local files that the API can't access
                              const mediaUrl = item.content;
                              if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
                                  payload.media = mediaUrl;
                              } else {
-                                 payload.media = getMediaContent(mediaUrl, item.mimeType);
+                                 payload.media = await getMediaContent(mediaUrl, item.mimeType);
                              }
                              payload.caption = '';
                              if (item.filename) payload.fileName = item.filename;

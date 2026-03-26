@@ -1,11 +1,23 @@
 const fs = require('fs');
 const path = require('path');
 
+const readRemoteFileAsBase64 = async (url) => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch remote media: HTTP ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer).toString('base64');
+};
+
 /**
- * Convert local upload URLs to Base64 Data URIs for Evolution API.
- * If the URL points to a local /api/uploads/ path, reads the file from disk.
+ * Convert local upload URLs or remote media URLs to Base64 content for Evolution API.
+ * - rawBase64=true: returns plain base64 (used for WhatsApp audio/PTT)
+ * - rawBase64=false: returns Data URI for local files when needed
  */
-const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
+const getMediaContent = async (url, mimeType, { rawBase64 = false } = {}) => {
   try {
     if (!url || typeof url !== 'string') return url;
 
@@ -13,7 +25,6 @@ const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
       return url.replace(/^data:[^;]+;base64,/i, '');
     }
 
-    // Check if URL points to our uploads
     if (url.includes('/api/uploads/') || url.includes('/uploads/')) {
       const uploadMarker = url.includes('/api/uploads/') ? '/api/uploads/' : '/uploads/';
       const parts = url.split(uploadMarker);
@@ -25,7 +36,6 @@ const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
         if (pathParts.length >= 2) {
           const type = pathParts[0];
           const filename = pathParts.slice(1).join('/');
-
           const uploadDir = process.env.UPLOAD_DIR || '/app/uploads';
           const filePath = path.join(uploadDir, type, filename);
 
@@ -33,18 +43,19 @@ const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
             console.log(`[MediaHelper] Converting local file to Base64: ${filePath}`);
             const fileBuffer = fs.readFileSync(filePath);
             const base64 = fileBuffer.toString('base64');
-            if (rawBase64) {
-              return base64;
-            }
-            return `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
-          } else {
-            console.warn(`[MediaHelper] Local file not found: ${filePath}`);
+            return rawBase64 ? base64 : `data:${mimeType || 'application/octet-stream'};base64,${base64}`;
           }
+
+          console.warn(`[MediaHelper] Local file not found: ${filePath}`);
         }
       }
     }
 
-    // Return original URL if not a local file
+    if (rawBase64 && /^https?:\/\//i.test(url)) {
+      console.log(`[MediaHelper] Fetching remote media for Base64 conversion: ${url}`);
+      return await readRemoteFileAsBase64(url);
+    }
+
     return url;
   } catch (error) {
     console.error('[MediaHelper] Error converting media:', error.message);

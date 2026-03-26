@@ -395,17 +395,16 @@ router.post('/campaigns/:id/test', async (req, res) => {
                     encoding: true,
                 },
                 audioMessage: {
-                    audio: getMediaContent(content, 'audio/mp3', { rawBase64: true }),
+                    audio: await getMediaContent(content, 'audio/mp3', { rawBase64: true }),
                 },
              };
           } else if (['video', 'document', 'image'].includes(type)) {
                endpoint = '/message/sendMedia';
                payload.mediatype = type;
-               // Send URL directly to Evolution API
                if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
                    payload.media = content;
                } else {
-                   payload.media = getMediaContent(content, null);
+                   payload.media = await getMediaContent(content, null);
                }
                payload.caption = '';
                if (type === 'document') payload.fileName = 'documento-teste.pdf';
