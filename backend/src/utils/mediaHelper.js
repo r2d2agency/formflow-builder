@@ -5,7 +5,7 @@ const path = require('path');
  * Convert local upload URLs to Base64 Data URIs for Evolution API.
  * If the URL points to a local /api/uploads/ path, reads the file from disk.
  */
-const getMediaContent = (url, mimeType) => {
+const getMediaContent = (url, mimeType, { rawBase64 = false } = {}) => {
   try {
     if (!url || typeof url !== 'string') return url;
 
