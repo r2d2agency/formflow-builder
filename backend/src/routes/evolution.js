@@ -1,6 +1,7 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
 const { getMediaContent } = require('../utils/mediaHelper');
+const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
 const router = express.Router();
 
 // Helper to normalize API URL
@@ -145,18 +146,13 @@ const createEvolutionService = (instance) => {
     },
     
     sendAudio: async (number, audioUrl) => {
-      return _fetch(`/message/sendWhatsAppAudio/${instanceName}`, {
+      return _fetch(`/message/sendAudio/${instanceName}`, {
         method: 'POST',
         body: JSON.stringify({
           number,
-          options: {
-            delay: 1200,
-            presence: 'recording',
-            encoding: true,
-          },
-          audioMessage: {
-            audio: audioUrl,
-          }
+          audio: audioUrl,
+          ptt: true,
+          delay: 1200,
         })
       });
     },
@@ -552,8 +548,8 @@ router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
         apiResponse = await service.sendText(cleanPhone, message);
       } else if (type === 'audio') {
         if (!media_url) throw new Error('URL do áudio obrigatória');
-        const audioContent = await getMediaContent(media_url, 'audio/mp3', { rawBase64: true });
-        apiResponse = await service.sendAudio(cleanPhone, audioContent);
+        const audioUrl = await prepareAudioForEvolutionUrl(media_url, { req });
+        apiResponse = await service.sendAudio(cleanPhone, audioUrl);
       } else {
         // image, video, document
         if (!media_url) throw new Error('URL da mídia obrigatória');

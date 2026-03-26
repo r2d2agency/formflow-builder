@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getMediaContent } = require('../utils/mediaHelper');
+const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
 
 // --- Migration Helper (Temporary) ---
 router.get('/migrate-schema', async (req, res) => {
@@ -386,17 +387,12 @@ router.post('/campaigns/:id/test', async (req, res) => {
              endpoint = '/message/sendText';
              payload.text = replaceVars(content);
         } else if (type === 'audio') {
-             endpoint = '/message/sendWhatsAppAudio';
+             endpoint = '/message/sendAudio';
              payload = {
                 number: cleanPhone,
-                options: {
-                    delay: 1200,
-                    presence: 'recording',
-                    encoding: true,
-                },
-                audioMessage: {
-                    audio: await getMediaContent(content, 'audio/mp3', { rawBase64: true }),
-                },
+                delay: 1200,
+                ptt: true,
+                audio: await prepareAudioForEvolutionUrl(content),
              };
           } else if (['video', 'document', 'image'].includes(type)) {
                endpoint = '/message/sendMedia';

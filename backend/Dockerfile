@@ -3,8 +3,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck and ffmpeg for audio transcoding
+RUN apk add --no-cache curl ffmpeg
 
 # Install dependencies
 COPY package.json ./
