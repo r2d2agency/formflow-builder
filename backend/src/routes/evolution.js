@@ -112,13 +112,32 @@ const createEvolutionService = (instance) => {
     },
 
     sendMedia: async (number, mediaUrl, mediaType, caption) => {
+      let finalMedia = mediaUrl;
+      
+      // If image URL has unsupported extension (.jfif, .webp, etc), convert to base64
+      if (mediaType === 'image' && typeof mediaUrl === 'string' && /^https?:\/\//i.test(mediaUrl)) {
+        const unsupportedExt = /\.(jfif|webp|bmp|tiff?|svg)(\?.*)?$/i;
+        if (unsupportedExt.test(mediaUrl)) {
+          try {
+            console.log(`[sendMedia] Converting unsupported image format to base64: ${mediaUrl}`);
+            const axios = require('axios');
+            const resp = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 15000 });
+            const contentType = resp.headers['content-type'] || 'image/jpeg';
+            const base64 = Buffer.from(resp.data).toString('base64');
+            finalMedia = `data:${contentType};base64,${base64}`;
+          } catch (err) {
+            console.warn(`[sendMedia] Failed to convert image, sending URL as-is:`, err.message);
+          }
+        }
+      }
+      
       // Evolution v2 endpoint for media
       return _fetch(`/message/sendMedia/${instanceName}`, {
         method: 'POST',
         body: JSON.stringify({
           number,
           mediatype: mediaType,
-          media: mediaUrl,
+          media: finalMedia,
           caption: caption || '',
           delay: 1200
         })
