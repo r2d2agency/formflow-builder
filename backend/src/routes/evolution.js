@@ -552,12 +552,12 @@ router.post('/:id/send-test', checkInstanceAccess, async (req, res) => {
         apiResponse = await service.sendText(cleanPhone, message);
       } else if (type === 'audio') {
         if (!media_url) throw new Error('URL do áudio obrigatória');
-        const audioContent = getMediaContent(media_url, 'audio/mp3', { rawBase64: true });
+        const audioContent = await getMediaContent(media_url, 'audio/mp3', { rawBase64: true });
         apiResponse = await service.sendAudio(cleanPhone, audioContent);
       } else {
         // image, video, document
         if (!media_url) throw new Error('URL da mídia obrigatória');
-        const mediaContent = getMediaContent(media_url, null);
+        const mediaContent = await getMediaContent(media_url, null);
         apiResponse = await service.sendMedia(cleanPhone, mediaContent, type === 'document' ? 'document' : type, message);
       }
 
