@@ -146,7 +146,7 @@ const createEvolutionService = (instance) => {
     },
     
     sendAudio: async (number, audioUrl) => {
-      return _fetch(`/message/sendAudio/${instanceName}`, {
+      return _fetch(`/message/sendWhatsAppAudio/${instanceName}`, {
         method: 'POST',
         body: JSON.stringify({
           number,

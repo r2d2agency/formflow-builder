@@ -346,7 +346,7 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            endpoint = '/message/sendText';
                            payload.text = replaceVariables(item.content);
                           } else if (item.type === 'audio') {
-                               endpoint = '/message/sendAudio';
+                               endpoint = '/message/sendWhatsAppAudio';
                               payload = {
                                   number: cleanClientPhone,
                                    delay,

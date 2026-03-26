@@ -387,7 +387,7 @@ router.post('/campaigns/:id/test', async (req, res) => {
              endpoint = '/message/sendText';
              payload.text = replaceVars(content);
         } else if (type === 'audio') {
-             endpoint = '/message/sendAudio';
+             endpoint = '/message/sendWhatsAppAudio';
              payload = {
                 number: cleanPhone,
                 delay: 1200,
