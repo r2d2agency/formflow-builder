@@ -43,25 +43,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // If it's the superadmin mock token, we skip the server-side check 
-    if (token === 'superadmin-session-token') {
-      const superAdminEmail = import.meta.env.VITE_SUPERADMIN_EMAIL || 'superadmin@example.com';
-      setState({
-        user: {
-          id: 'super-admin-id',
-          email: superAdminEmail,
-          name: 'Super Admin',
-          role: 'admin',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      return;
-    }
-
     const response = await apiService.get<User>(API_CONFIG.ENDPOINTS.ME);
     
     if (response.success && response.data) {
@@ -89,32 +70,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true }));
     
-    // Superadmin bypass via environment variables
-    const superAdminEmail = import.meta.env.VITE_SUPERADMIN_EMAIL || 'superadmin@example.com';
-    const superAdminPassword = import.meta.env.VITE_SUPERADMIN_PASSWORD || 'superadmin123';
-
-    if (email === superAdminEmail && password === superAdminPassword) {
-      const superUser: User = {
-        id: 'super-admin-id',
-        email: superAdminEmail,
-        name: 'Super Admin',
-        role: 'admin',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      const mockToken = 'superadmin-session-token';
-      apiService.setToken(mockToken);
-      
-      setState({
-        user: superUser,
-        token: mockToken,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      return true;
-    }
-
     const response = await apiService.post<{ user: User; token: string }>(
       API_CONFIG.ENDPOINTS.LOGIN,
       { email, password }
