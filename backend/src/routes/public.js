@@ -454,22 +454,14 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                               linkPreview: false
                           };
                           
-                          try {
-                               const instanceName = instance.name.trim();
-                               const apiKey = instance.api_key.trim();
-                               
-                               console.log(`[WhatsApp] Sending Team notification to ${cleanTeamNumber}`);
-                               
-                               const res = await fetch(`${effectiveUrl}/message/sendText/${instanceName}`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'apikey': apiKey,
-                                    },
-                                    body: JSON.stringify(payload),
-                                });
-                                
-                                const resData = await res.json().catch(() => ({}));
+                           try {
+                                console.log(`[WhatsApp] Sending Team notification to ${cleanTeamNumber}`);
+
+                                const apiResult = await callWhatsAppApi(instance, '/message/sendText', payload);
+                                const res = { ok: apiResult.ok, status: apiResult.status };
+                                const resData = apiResult.data || {};
+
+
                                 
                                 if (res.ok) {
                                    console.log(`[WhatsApp] Team notification sent to ${cleanTeamNumber}`);
