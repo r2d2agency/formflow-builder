@@ -781,7 +781,8 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
 
           console.log('[Gleego] Payload:', JSON.stringify(gleegoPayload));
 
-          const gleegoUrl = `https://whats.gleego.com.br/api/lead-webhooks/receive/${gleegoToken}`;
+          const gleegoBaseUrl = (settings.gleego_api_url || 'https://whats.gleego.com.br').trim().replace(/\/+$/, '');
+          const gleegoUrl = `${gleegoBaseUrl}/api/lead-webhooks/receive/${gleegoToken}`;
           const gleegoResponse = await fetch(gleegoUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
