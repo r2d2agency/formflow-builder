@@ -2,125 +2,37 @@ const express = require('express');
 const authMiddleware = require('../middleware/auth');
 const { getMediaContent } = require('../utils/mediaHelper');
 const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
+const { normalizeUrl, getProvider, callWhatsAppApiOrThrow } = require('../utils/whatsappApi');
 const router = express.Router();
 
-// Helper to normalize API URL
-const normalizeUrl = (url) => {
-  if (!url) return '';
-  return url.trim().replace(/\/+$/, '');
-};
-
 // Helper to get effective URL
-const getEffectiveApiUrl = (instance) => {
-  // Always use the public/main API URL
-  // (Internal URL logic removed as per request)
-  return normalizeUrl(instance.api_url);
-};
+const getEffectiveApiUrl = (instance) => normalizeUrl(instance.api_url);
 
-// Evolution API Service Wrapper
+// WhatsApp Service Wrapper (Evolution API + UAZAPI)
 const createEvolutionService = (instance) => {
-  const baseUrl = getEffectiveApiUrl(instance);
-  const apiKey = instance.api_key;
-  const instanceName = instance.name;
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'apikey': apiKey,
-    'Connection': 'close' // Important for some environments to prevent socket hang up
-  };
-
-  const _fetch = async (endpoint, options = {}) => {
-    const url = `${baseUrl}${endpoint}`;
-    console.log(`[Evolution] Request: ${options.method || 'GET'} ${url}`);
-    
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers
-        }
-      });
-
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        data = { error: 'Non-JSON response', body: responseText };
-      }
-
-      if (!response.ok) {
-        // Log detailed error from API if available
-        console.warn(`[Evolution] API Error ${response.status}:`, data);
-        const errorMessage = data.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP Error ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      return data;
-    } catch (error) {
-      // Enhanced error logging
-      const errorDetails = {
-        message: error.message,
-        cause: error.cause,
-        code: error.code, // Node.js network error code (e.g. ECONNREFUSED)
-        url: url
-      };
-      console.error(`[Evolution] Error requesting ${url}:`, JSON.stringify(errorDetails));
-      
-      // Enrich error object for callers
-      error.details = errorDetails;
-      
-      // Translate common network errors
-      if (error.cause && error.cause.code === 'ECONNREFUSED') {
-        error.message = `Conexão recusada em ${baseUrl}. Verifique se a URL está correta e o servidor está rodando.`;
-      } else if (error.cause && error.cause.code === 'ENOTFOUND') {
-        error.message = `Não foi possível encontrar o servidor em ${baseUrl}. Verifique o DNS ou IP.`;
-      } else if (error.message.includes('fetch failed')) {
-         error.message = `Falha na conexão com ${baseUrl}. Verifique firewall, URL incorreta ou servidor offline. (Erro original: ${error.message})`;
-      }
-
-      throw error;
-    }
-  };
+  const call = (endpoint, payload, options) => callWhatsAppApiOrThrow(instance, endpoint, payload, options);
+  const isUazapi = getProvider(instance) === 'uazapi';
 
   return {
-    checkConnection: async () => {
-      // Try to get connection state
-      return _fetch(`/instance/connectionState/${instanceName}`);
-    },
-    
-    fetchInstance: async () => {
-      // Try to fetch instance details (verifies global key or instance existence)
-      return _fetch(`/instance/fetchInstances?instanceName=${instanceName}`);
-    },
+    provider: getProvider(instance),
 
-    connect: async () => {
-      // Get QR Code or status
-      return _fetch(`/instance/connect/${instanceName}`);
-    },
+    checkConnection: async () => call('/instance/connectionState', null, { method: 'GET' }),
 
-    sendText: async (number, text) => {
-      return _fetch(`/message/sendText/${instanceName}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          number,
-          text,
-          delay: 1200,
-          linkPreview: false
-        })
-      });
-    },
+    fetchInstance: async () => call('/instance/fetchInstances', null, { method: 'GET' }),
+
+    connect: async () => (isUazapi ? call('/instance/connect', {}) : call('/instance/connect', null, { method: 'GET' })),
+
+    sendText: async (number, text) =>
+      call('/message/sendText', { number, text, delay: 1200, linkPreview: false }),
 
     sendMedia: async (number, mediaUrl, mediaType, caption) => {
       let finalMedia = mediaUrl;
-      
+
       // If image URL has unsupported extension (.jfif, .webp, etc), convert to base64
       if (mediaType === 'image' && typeof mediaUrl === 'string' && /^https?:\/\//i.test(mediaUrl)) {
         const unsupportedExt = /\.(jfif|webp|bmp|tiff?|svg)(\?.*)?$/i;
         if (unsupportedExt.test(mediaUrl)) {
           try {
-            console.log(`[sendMedia] Converting unsupported image format to base64: ${mediaUrl}`);
             const axios = require('axios');
             const resp = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 15000 });
             const contentType = resp.headers['content-type'] || 'image/jpeg';
@@ -131,39 +43,24 @@ const createEvolutionService = (instance) => {
           }
         }
       }
-      
-      // Evolution v2 endpoint for media
-      return _fetch(`/message/sendMedia/${instanceName}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          number,
-          mediatype: mediaType,
-          media: finalMedia,
-          caption: caption || '',
-          delay: 1200
-        })
-      });
-    },
-    
-    sendAudio: async (number, audioUrl) => {
-      return _fetch(`/message/sendWhatsAppAudio/${instanceName}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          number,
-          audio: audioUrl,
-          ptt: true,
-          delay: 1200,
-        })
+
+      return call('/message/sendMedia', {
+        number,
+        mediatype: mediaType,
+        media: finalMedia,
+        caption: caption || '',
+        delay: 1200,
       });
     },
 
-    disconnect: async () => {
-      return _fetch(`/instance/logout/${instanceName}`, {
-        method: 'DELETE',
-      });
-    }
+    sendAudio: async (number, audioUrl) =>
+      call('/message/sendWhatsAppAudio', { number, audio: audioUrl, ptt: true, delay: 1200 }),
+
+    disconnect: async () =>
+      isUazapi ? call('/instance/logout', {}) : call('/instance/logout', null, { method: 'DELETE' }),
   };
 };
+
 
 // Apply auth middleware
 router.use(authMiddleware);
