@@ -1025,6 +1025,19 @@ const FormEditor: React.FC = () => {
                 {localForm.settings?.gleego_enabled && (
                   <>
                     <div className="space-y-2">
+                      <Label htmlFor="gleego_api_url">URL do Servidor Gleego</Label>
+                      <Input
+                        id="gleego_api_url"
+                        value={localForm.settings?.gleego_api_url || ''}
+                        onChange={(e) => handleSettingsChange('gleego_api_url', e.target.value)}
+                        placeholder="https://whats.gleego.com.br"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Altere caso o servidor do Gleego tenha sido migrado. Deixe em branco para usar o padrão (https://whats.gleego.com.br).
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="gleego_token">Token Padrão da API</Label>
                       <Input
                         id="gleego_token"
