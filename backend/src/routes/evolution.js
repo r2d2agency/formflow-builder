@@ -268,26 +268,28 @@ router.put('/:id', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const currentUserId = req.user.id;
-    const { name, api_url, api_key, default_number, is_active, user_id } = req.body;
+    const { name, api_url, api_key, default_number, is_active, user_id, provider } = req.body;
 
     // Build update query dynamically based on provided fields
     // Admin can update any instance, regardless of ownership
-    
-    // If user_id is provided (transfer ownership), include it
     let query = `
        UPDATE evolution_instances 
        SET name = $1, api_url = $2, api_key = $3, default_number = $4, is_active = $5
     `;
     const params = [name, normalizeUrl(api_url), api_key, default_number, is_active, req.params.id];
-    
-    if (user_id) {
-        query += `, user_id = $7 WHERE id = $6`;
-        params.push(user_id);
-    } else {
-        query += ` WHERE id = $6`;
+
+    if (provider) {
+        params.push(provider === 'uazapi' ? 'uazapi' : 'evolution');
+        query += `, provider = $${params.length}`;
     }
-    
-    query += ` RETURNING *`;
+
+    if (user_id) {
+        params.push(user_id);
+        query += `, user_id = $${params.length}`;
+    }
+
+    query += ` WHERE id = $6 RETURNING *`;
+
 
     const result = await pool.query(query, params);
 
