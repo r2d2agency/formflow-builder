@@ -121,6 +121,15 @@ const runMigrations = async () => {
     } catch (e) {
       console.warn('[startup] Failed to add internal_api_url column:', e.message);
     }
+
+    // 3b. Add provider column (evolution | uazapi)
+    try {
+      await pool.query("ALTER TABLE evolution_instances ADD COLUMN IF NOT EXISTS provider VARCHAR(20) NOT NULL DEFAULT 'evolution'");
+      console.log('[startup] Checked/Added provider column to evolution_instances');
+    } catch (e) {
+      console.warn('[startup] Failed to add provider column:', e.message);
+    }
+
     // 3. Create integration_logs table if missing
     try {
       await pool.query(`

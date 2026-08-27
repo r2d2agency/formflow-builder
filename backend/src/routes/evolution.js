@@ -237,7 +237,7 @@ router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const currentUserId = req.user.id;
-    const { name, api_url, api_key, default_number, is_active, user_id } = req.body;
+    const { name, api_url, api_key, default_number, is_active, user_id, provider } = req.body;
 
     // Basic validation
     if (!name || !api_url || !api_key) {
@@ -246,13 +246,15 @@ router.post('/', adminOnly, async (req, res) => {
 
     // If admin provides user_id, use it; otherwise use current admin's id
     const targetUserId = user_id || currentUserId;
+    const finalProvider = provider === 'uazapi' ? 'uazapi' : 'evolution';
 
     const result = await pool.query(
-      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO evolution_instances (name, api_url, api_key, default_number, is_active, user_id, provider)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true, targetUserId]
+      [name, normalizeUrl(api_url), api_key, default_number, is_active ?? true, targetUserId, finalProvider]
     );
+
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
