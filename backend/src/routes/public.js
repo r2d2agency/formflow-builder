@@ -1052,32 +1052,36 @@ router.post('/check-whatsapp', async (req, res) => {
     }
 
     const instance = instanceResult.rows[0];
-    const baseUrl = normalizeUrl(instance.api_url);
-    const instanceName = instance.name.trim();
+    const isUazapi = (instance.provider || 'evolution').toLowerCase() === 'uazapi';
 
-    // Call Evolution API: POST /chat/whatsappNumbers/{instance}
-    const checkResponse = await fetch(`${baseUrl}/chat/whatsappNumbers/${instanceName}`, {
+    // Evolution: POST /chat/whatsappNumbers/{instance} | UAZAPI: POST /chat/check
+    const baseUrl = normalizeUrl(instance.api_url);
+    const checkUrl = isUazapi
+      ? `${baseUrl}/chat/check`
+      : `${baseUrl}/chat/whatsappNumbers/${instance.name.trim()}`;
+
+    const checkResponse = await fetch(checkUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': instance.api_key.trim(),
-      },
+      headers: isUazapi
+        ? { 'Content-Type': 'application/json', token: instance.api_key.trim() }
+        : { 'Content-Type': 'application/json', apikey: instance.api_key.trim() },
       body: JSON.stringify({ numbers: [cleanPhone] }),
     });
 
     if (!checkResponse.ok) {
-      console.warn('[WhatsApp Check] Evolution API error:', checkResponse.status);
+      console.warn('[WhatsApp Check] API error:', checkResponse.status);
       return res.json({ success: true, data: { exists: null, reason: 'api_error' } });
     }
 
     const checkData = await checkResponse.json();
     console.log('[WhatsApp Check] Response:', JSON.stringify(checkData));
 
-    // Evolution API returns array of results: [{ exists: true/false, jid: "...", number: "..." }]
-    const result = Array.isArray(checkData) ? checkData[0] : checkData;
-    const exists = result?.exists === true;
+    // Returns array of results: [{ exists: true/false, jid: "...", number: "..." }]
+    const raw = Array.isArray(checkData) ? checkData[0] : (checkData?.numbers?.[0] || checkData);
+    const exists = raw?.exists === true || raw?.isInWhatsapp === true;
 
-    return res.json({ success: true, data: { exists, jid: result?.jid || null } });
+    return res.json({ success: true, data: { exists, jid: raw?.jid || raw?.JID || null } });
+
   } catch (error) {
     console.error('[WhatsApp Check] Error:', error.message);
     return res.json({ success: true, data: { exists: null, reason: 'error' } });
