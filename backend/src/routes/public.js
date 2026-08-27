@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
+const { callWhatsAppApi } = require('../utils/whatsappApi');
 
 const router = express.Router();
 
@@ -378,20 +379,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            attempts++;
                            console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to Client ${cleanClientPhone} (Attempt ${attempts})`);
                            
-                           try {
-                               const instanceName = instance.name.trim();
-                               const apiKey = instance.api_key.trim();
+                            try {
+                                const apiResult = await callWhatsAppApi(instance, endpoint, payload);
+                                const res = { ok: apiResult.ok, status: apiResult.status };
+                                const resData = apiResult.data || {};
 
-                               const res = await fetch(`${effectiveUrl}${endpoint}/${instanceName}`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'apikey': apiKey,
-                                    },
-                                    body: JSON.stringify(payload),
-                                });
-                                
-                                const resData = await res.json().catch(() => ({}));
                                 
                                 if (res.ok) {
                                    success = true;
@@ -462,22 +454,14 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                               linkPreview: false
                           };
                           
-                          try {
-                               const instanceName = instance.name.trim();
-                               const apiKey = instance.api_key.trim();
-                               
-                               console.log(`[WhatsApp] Sending Team notification to ${cleanTeamNumber}`);
-                               
-                               const res = await fetch(`${effectiveUrl}/message/sendText/${instanceName}`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'apikey': apiKey,
-                                    },
-                                    body: JSON.stringify(payload),
-                                });
-                                
-                                const resData = await res.json().catch(() => ({}));
+                           try {
+                                console.log(`[WhatsApp] Sending Team notification to ${cleanTeamNumber}`);
+
+                                const apiResult = await callWhatsAppApi(instance, '/message/sendText', payload);
+                                const res = { ok: apiResult.ok, status: apiResult.status };
+                                const resData = apiResult.data || {};
+
+
                                 
                                 if (res.ok) {
                                    console.log(`[WhatsApp] Team notification sent to ${cleanTeamNumber}`);
@@ -781,7 +765,10 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
 
           console.log('[Gleego] Payload:', JSON.stringify(gleegoPayload));
 
-          const gleegoBaseUrl = (settings.gleego_api_url || 'https://whats.gleego.com.br').trim().replace(/\/+$/, '');
+          let gleegoBaseUrl = (settings.gleego_api_url || 'https://whats.gleego.com.br').trim().replace(/\/+$/, '');
+          // Aceita tanto a URL base quanto a URL completa do webhook (com /api/lead-webhooks/receive/<token>)
+          const webhookPathMatch = gleegoBaseUrl.match(/^(.*?)\/api\/lead-webhooks\/receive(?:\/.*)?$/i);
+          if (webhookPathMatch) gleegoBaseUrl = webhookPathMatch[1].replace(/\/+$/, '');
           const gleegoUrl = `${gleegoBaseUrl}/api/lead-webhooks/receive/${gleegoToken}`;
           const gleegoResponse = await fetch(gleegoUrl, {
             method: 'POST',
@@ -1068,32 +1055,36 @@ router.post('/check-whatsapp', async (req, res) => {
     }
 
     const instance = instanceResult.rows[0];
-    const baseUrl = normalizeUrl(instance.api_url);
-    const instanceName = instance.name.trim();
+    const isUazapi = (instance.provider || 'evolution').toLowerCase() === 'uazapi';
 
-    // Call Evolution API: POST /chat/whatsappNumbers/{instance}
-    const checkResponse = await fetch(`${baseUrl}/chat/whatsappNumbers/${instanceName}`, {
+    // Evolution: POST /chat/whatsappNumbers/{instance} | UAZAPI: POST /chat/check
+    const baseUrl = normalizeUrl(instance.api_url);
+    const checkUrl = isUazapi
+      ? `${baseUrl}/chat/check`
+      : `${baseUrl}/chat/whatsappNumbers/${instance.name.trim()}`;
+
+    const checkResponse = await fetch(checkUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': instance.api_key.trim(),
-      },
+      headers: isUazapi
+        ? { 'Content-Type': 'application/json', token: instance.api_key.trim() }
+        : { 'Content-Type': 'application/json', apikey: instance.api_key.trim() },
       body: JSON.stringify({ numbers: [cleanPhone] }),
     });
 
     if (!checkResponse.ok) {
-      console.warn('[WhatsApp Check] Evolution API error:', checkResponse.status);
+      console.warn('[WhatsApp Check] API error:', checkResponse.status);
       return res.json({ success: true, data: { exists: null, reason: 'api_error' } });
     }
 
     const checkData = await checkResponse.json();
     console.log('[WhatsApp Check] Response:', JSON.stringify(checkData));
 
-    // Evolution API returns array of results: [{ exists: true/false, jid: "...", number: "..." }]
-    const result = Array.isArray(checkData) ? checkData[0] : checkData;
-    const exists = result?.exists === true;
+    // Returns array of results: [{ exists: true/false, jid: "...", number: "..." }]
+    const raw = Array.isArray(checkData) ? checkData[0] : (checkData?.numbers?.[0] || checkData);
+    const exists = raw?.exists === true || raw?.isInWhatsapp === true;
 
-    return res.json({ success: true, data: { exists, jid: result?.jid || null } });
+    return res.json({ success: true, data: { exists, jid: raw?.jid || raw?.JID || null } });
+
   } catch (error) {
     console.error('[WhatsApp Check] Error:', error.message);
     return res.json({ success: true, data: { exists: null, reason: 'error' } });

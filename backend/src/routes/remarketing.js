@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getMediaContent } = require('../utils/mediaHelper');
 const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
+const { callWhatsAppApi } = require('../utils/whatsappApi');
 
 // --- Migration Helper (Temporary) ---
 router.get('/migrate-schema', async (req, res) => {
@@ -406,20 +407,9 @@ router.post('/campaigns/:id/test', async (req, res) => {
                if (type === 'document') payload.fileName = 'documento-teste.pdf';
         }
 
-        const url = instance.internal_api_url || instance.api_url;
-        // Ensure url doesn't end with slash
-        const effectiveUrl = url.replace(/\/$/, '');
-        
         try {
             console.log(`[Test Campaign] Sending ${type} to ${cleanPhone}`);
-            await fetch(`${effectiveUrl}${endpoint}/${instance.name}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': instance.api_key
-                },
-                body: JSON.stringify(payload)
-            });
+            await callWhatsAppApi(instance, endpoint, payload);
         } catch (e) {
             console.error('Error sending test message:', e);
         }
