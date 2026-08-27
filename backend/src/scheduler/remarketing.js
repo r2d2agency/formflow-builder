@@ -1,6 +1,7 @@
 const process = require('process');
 const { getMediaContent } = require('../utils/mediaHelper');
 const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
+const { callWhatsAppApi } = require('../utils/whatsappApi');
 
 // Helper to find phone number
 const findField = (data, searchTerms) => {
@@ -183,16 +184,9 @@ const sendMessage = async (pool, instance, lead, campaign, step, content) => {
     }
 
     try {
-      const res = await fetch(`${apiUrl}${endpoint}/${instance.name}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': apiKey
-        },
-        body: JSON.stringify(body)
-      });
-      const resData = await res.json().catch(() => ({}));
-      return { success: res.ok, error: res.ok ? null : (resData.message || 'Unknown error') };
+      const res = await callWhatsAppApi(instance, endpoint, body);
+      const resData = res.data || {};
+      return { success: res.ok, error: res.ok ? null : (resData.message || resData.error || `HTTP ${res.status}`) };
     } catch (error) {
       return { success: false, error: error.message };
     }
