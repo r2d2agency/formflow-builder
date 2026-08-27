@@ -203,6 +203,7 @@ export interface Lead {
 export interface EvolutionInstance {
   id: string;
   name: string;
+  provider?: 'evolution' | 'uazapi';
   display_name?: string;
   api_url: string;
   internal_api_url?: string;
