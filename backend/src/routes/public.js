@@ -379,20 +379,11 @@ const processIntegrations = async (form, lead, data, ipAddress, userAgent, reqOr
                            attempts++;
                            console.log(`[WhatsApp] Sending item ${index + 1}/${itemsToSend.length} (${item.type}) to Client ${cleanClientPhone} (Attempt ${attempts})`);
                            
-                           try {
-                               const instanceName = instance.name.trim();
-                               const apiKey = instance.api_key.trim();
+                            try {
+                                const apiResult = await callWhatsAppApi(instance, endpoint, payload);
+                                const res = { ok: apiResult.ok, status: apiResult.status };
+                                const resData = apiResult.data || {};
 
-                               const res = await fetch(`${effectiveUrl}${endpoint}/${instanceName}`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'apikey': apiKey,
-                                    },
-                                    body: JSON.stringify(payload),
-                                });
-                                
-                                const resData = await res.json().catch(() => ({}));
                                 
                                 if (res.ok) {
                                    success = true;
