@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { prepareAudioForEvolutionUrl } = require('../utils/audioTranscoder');
+const { callWhatsAppApi } = require('../utils/whatsappApi');
 
 const router = express.Router();
 
