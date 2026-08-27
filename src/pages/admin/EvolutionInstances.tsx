@@ -101,6 +101,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
+  provider: z.enum(['evolution', 'uazapi']).default('evolution'),
   api_url: z.string().url('URL inválida').min(1, 'URL da API é obrigatória'),
   api_key: z.string().min(1, 'API Key é obrigatória'),
   default_number: z.string().optional(),
@@ -150,6 +151,7 @@ const EvolutionInstances: React.FC = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      provider: 'evolution',
       api_url: '',
       api_key: '',
       default_number: '',
@@ -163,6 +165,7 @@ const EvolutionInstances: React.FC = () => {
       setEditingInstance(instance);
       form.reset({
         name: instance.name,
+        provider: (instance.provider as 'evolution' | 'uazapi') || 'evolution',
         api_url: instance.api_url,
         api_key: instance.api_key,
         default_number: instance.default_number || '',
@@ -173,6 +176,7 @@ const EvolutionInstances: React.FC = () => {
       setEditingInstance(null);
       form.reset({
         name: '',
+        provider: 'evolution',
         api_url: '',
         api_key: '',
         default_number: '',
@@ -620,15 +624,45 @@ const EvolutionInstances: React.FC = () => {
 
                 <FormField
                   control={form.control}
+                  name="provider"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provedor</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o provedor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="evolution">Evolution API</SelectItem>
+                          <SelectItem value="uazapi">UAZAPI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Escolha qual API de WhatsApp esta conexão utiliza.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="api_url"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>URL da API</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://api.evolution.com" {...field} />
+                        <Input
+                          placeholder={form.watch('provider') === 'uazapi' ? 'https://sua-instancia.uazapi.com' : 'https://api.evolution.com'}
+                          {...field}
+                        />
                       </FormControl>
                       <FormDescription>
-                        URL base onde a Evolution API está hospedada.
+                        {form.watch('provider') === 'uazapi'
+                          ? 'URL do servidor UAZAPI (ex: https://free.uazapi.com).'
+                          : 'URL base onde a Evolution API está hospedada.'}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -639,12 +673,14 @@ const EvolutionInstances: React.FC = () => {
                   name="api_key"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>API Key (Global)</FormLabel>
+                      <FormLabel>{form.watch('provider') === 'uazapi' ? 'Token da Instância' : 'API Key (Global)'}</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Sua API Key Global" {...field} />
+                        <Input type="password" placeholder={form.watch('provider') === 'uazapi' ? 'Token da instância UAZAPI' : 'Sua API Key Global'} {...field} />
                       </FormControl>
                       <FormDescription>
-                        Chave de autenticação global da Evolution API.
+                        {form.watch('provider') === 'uazapi'
+                          ? 'Token da instância UAZAPI (enviado no header "token").'
+                          : 'Chave de autenticação global da Evolution API.'}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
